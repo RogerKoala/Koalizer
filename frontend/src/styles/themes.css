@@ -1,0 +1,144 @@
+:root {
+ --bg-primary-light: #f8fafc;
+ --bg-secondary-light: #ffffff;
+ --text-primary-light: #0f172a;
+ --text-secondary-light: #475569;
+ --text-muted-light: #64748b;
+ --border-light: #e2e8f0;
+ --accent-light: #3b82f6;
+}
+
+.dark {
+ --bg-primary-dark: #0f172a;
+ --bg-secondary-dark: #1e293b;
+ --text-primary-dark: #f1f5f9;
+ --text-secondary-dark: #94a3b8;
+ --border-dark: #334155;
+ --accent-dark: #60a5fa;
+}
+
+@theme {
+ --font-display: "Nunito Sans", sans-serif;
+}
+
+.light-theme-bg {
+ background: rgba(234, 238, 244);
+}
+
+.light-theme-card {
+ background: rgba(255, 255, 255, 0.9);
+ backdrop-filter: blur(10px);
+ border: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+.dark-theme-bg {
+ background-color: rgba(22, 32, 50, 1);
+}
+
+.dark-theme-card {
+ background: rgba(30, 41, 59, 0.9);
+ backdrop-filter: blur(10px);
+ border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.settings-icon {
+ transition: transform 0.3s ease;
+}
+
+.settings-icon:hover {
+ transform: rotate(90deg);
+}
+
+.settings-dropdown {
+ animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+ from {
+  opacity: 0;
+  transform: translateY(-10px);
+ }
+ to {
+  opacity: 1;
+  transform: translateY(0);
+ }
+}
+
+.text-primary-theme {
+ color: var(--text-primary-light);
+}
+
+.dark .text-primary-theme {
+ color: var(--text-primary-dark);
+}
+
+.text-secondary-theme {
+ color: var(--text-secondary-light);
+}
+
+.dark .text-secondary-theme {
+ color: var(--text-secondary-dark);
+}
+
+.bg-card-theme {
+ background-color: var(--bg-secondary-light);
+ border-color: var(--border-light);
+}
+
+.dark .bg-card-theme {
+ background-color: var(--bg-secondary-dark);
+ border-color: var(--border-dark);
+}
+
+.theme-button {
+ transition: all 0.2s ease;
+}
+
+.theme-button:hover {
+ transform: translateY(-1px);
+ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dark .theme-button:hover {
+ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes fadeIn {
+ from {
+  opacity: 0;
+  transform: translateY(-10px);
+ }
+ to {
+  opacity: 1;
+  transform: translateY(0);
+ }
+}
+
+.animate-fadeIn {
+ animation: fadeIn 0.2s ease-out;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+ width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+ background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+ background: #cbd5e1;
+ border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+ background: #94a3b8;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+ background: #475569;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+ background: #64748b;
+}

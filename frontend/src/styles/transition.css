@@ -1,0 +1,23 @@
+::view-transition-new(root) {
+ mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath d='M423.224 87.988c-83.121-10.271-97.757 45.889-120.515 49.44a147.732 147.732 0 0 0-46.706-7.543c-16.327 0-32.028 2.659-46.709 7.543-22.761-3.544-37.397-59.71-120.515-49.44C14.242 97.21-31.753 197.505 26.138 257.46c19.642 13.433 25.842-6.21 33.082 9.304 10.485 22.465 23.071 10.413 29.981 11.372 12.793 1.768 11.07 9.468 19.911 14.868 7.713 74.312 70.535 132.261 146.891 132.261s139.174-57.948 146.888-132.261c8.838-5.4 7.114-13.1 19.91-14.868 6.907-.959 19.497 11.094 29.978-11.372 7.24-15.514 13.443 4.128 33.082-9.304 57.892-59.955 11.9-160.25-62.637-169.472zM100.172 222.915' fill='white'/%3E%3C/svg%3E")
+  center / 0 no-repeat;
+ animation: scale 1.3s;
+ animation-fill-mode: both;
+}
+
+::view-transition-old(root),
+.dark::view-transition-old(root) {
+ animation: none;
+ animation-fill-mode: both;
+ z-index: -1;
+}
+.dark::view-transition-new(root) {
+ animation: scale 1.3s;
+ animation-fill-mode: both;
+}
+
+@keyframes scale {
+ to {
+  mask-size: 200vmax;
+ }
+}

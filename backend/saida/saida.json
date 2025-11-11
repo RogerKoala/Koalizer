@@ -1,0 +1,36 @@
+{
+  "aligned_transcription": [
+    {
+      "start": 1.55,
+      "end": 11.722,
+      "speaker": "SPEAKER_00",
+      "text": "Boa noite a todos. Abrindo os trabalhos da 36ª sessão, peço ao primeiro secretário que faça a chamada nominal dos senhores vereadores para verificação da presença."
+    },
+    {
+      "start": 12.583,
+      "end": 25.077,
+      "speaker": "SPEAKER_01",
+      "text": "Interessado, vereador Rodrigo Castilho Soares, de Projeto Decreto Legislativo nº 008-2025, datado de 3 de novembro de 2025."
+    },
+    {
+      "start": 28.6,
+      "end": 35.169,
+      "speaker": "SPEAKER_02",
+      "text": "Sr. Presidente Danilê dos Santos, mais uma vez cumprimento a minha diretora, vereadores presentes."
+    },
+    {
+      "start": 38.082,
+      "end": 41.597,
+      "speaker": "SPEAKER_00",
+      "text": "Declaro por encerrado a presente sessão. Uma ótima noite a todos."
+    }
+  ],
+  "durations": {
+    "transcription_seconds": 32.17741107940674,
+    "alignment_seconds": 7.143170595169067,
+    "diarization_seconds": 24.741963148117065,
+    "total_words": 69,
+    "total_time": "00:00:41",
+    "audio_file": "input.wav"
+  }
+}
