@@ -11,7 +11,7 @@ import gc
 from whisperx.diarize import DiarizationPipeline
 import os
 
-from shared import update_status, SAIDA_DIR
+from shared import update_status, OUTPUT_DIR
 
 FFMPEG_VOLUME_RE = re.compile(r"mean_volume:\s*(-?\d+(\.\d+)?) dB")
 
@@ -225,7 +225,7 @@ def create_json(file_path, output_path):
   total_audio_time = f"{hours:02}:{minutes:02}:{seconds:02}"
 
   if output_path is None:
-    out_path = SAIDA_DIR / f"{fp.stem}.json"
+    out_path = OUTPUT_DIR / f"{fp.stem}.json"
   else:
     out_path = Path(output_path)
 

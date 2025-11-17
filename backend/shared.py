@@ -1,10 +1,10 @@
 import threading
 from pathlib import Path
 
-UPLOAD_DIR = Path("uploads")
-SAIDA_DIR = Path("saida")
+UPLOAD_DIR = Path("upload")
+OUTPUT_DIR = Path("saida")
 UPLOAD_DIR.mkdir(exist_ok=True, parents=True)
-SAIDA_DIR.mkdir(exist_ok=True, parents=True)
+OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 
 ALLOWED_EXT = {".wav", ".mp3", ".m4a",
                ".flac", ".ogg", ".opus", ".amr", ".mp4", ".mov", ".mkv", ".avi"}

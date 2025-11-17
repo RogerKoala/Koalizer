@@ -11,7 +11,7 @@ from flask_cors import CORS
 # Local imports
 from main import create_json
 from youtube_downloader import download_youtube_audio, validate_youtube_url, get_video_info
-from shared import lock, status, update_status, UPLOAD_DIR, SAIDA_DIR, ALLOWED_EXT, INPUT_NAME, OUTPUT_NAME
+from shared import lock, status, update_status, UPLOAD_DIR, OUTPUT_DIR, ALLOWED_EXT, INPUT_NAME, OUTPUT_NAME
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -40,7 +40,7 @@ def worker_process(saved_path: Path, source_type: str = "file"):
     status["source"] = source_type
 
   try:
-    output_path = SAIDA_DIR / OUTPUT_NAME
+    output_path = OUTPUT_DIR / OUTPUT_NAME
 
     result_path = create_json(str(saved_path), str(output_path))
 
@@ -57,7 +57,7 @@ def worker_process(saved_path: Path, source_type: str = "file"):
       json_exists = True
       json_path = output_path
     else:
-      json_files = list(SAIDA_DIR.glob("*.json"))
+      json_files = list(OUTPUT_DIR.glob("*.json"))
       if json_files:
         json_exists = True
         json_path = json_files[0]
@@ -104,7 +104,7 @@ def worker_process_youtube(youtube_url: str):
 
     # Clear directories before download
     _clear_directory(UPLOAD_DIR)
-    _clear_directory(SAIDA_DIR)
+    _clear_directory(OUTPUT_DIR)
 
     # Download YouTube audio
     audio_path = download_youtube_audio(youtube_url, UPLOAD_DIR, INPUT_NAME)
@@ -113,7 +113,7 @@ def worker_process_youtube(youtube_url: str):
     # Update status to processing
     update_status("processing")
 
-    output_path = SAIDA_DIR / OUTPUT_NAME
+    output_path = OUTPUT_DIR / OUTPUT_NAME
     result_path = create_json(str(audio_path), str(output_path))
 
     time.sleep(1)
@@ -127,7 +127,7 @@ def worker_process_youtube(youtube_url: str):
       json_exists = True
       json_path = output_path
     else:
-      json_files = list(SAIDA_DIR.glob("*.json"))
+      json_files = list(OUTPUT_DIR.glob("*.json"))
       if json_files:
         json_exists = True
         json_path = json_files[0]
@@ -179,7 +179,7 @@ def upload():
 
     with lock:
       _clear_directory(UPLOAD_DIR)
-      _clear_directory(SAIDA_DIR)
+      _clear_directory(OUTPUT_DIR)
       status.update({"state": "queued", "json": None, "err": None})
 
     f.save(saved_path)
@@ -206,7 +206,7 @@ def upload():
 
     with lock:
       _clear_directory(UPLOAD_DIR)
-      _clear_directory(SAIDA_DIR)
+      _clear_directory(OUTPUT_DIR)
       status.update({"state": "queued", "json": None, "err": None})
 
     t = Thread(target=worker_process_youtube, args=(youtube_url,), daemon=True)
@@ -233,11 +233,11 @@ def get_json():
       return jsonify({"error": "json not available", "status": status["state"]}), 404
     json_filename = status["json"]
 
-  json_path = SAIDA_DIR / json_filename
+  json_path = OUTPUT_DIR / json_filename
   if not json_path.exists():
     return jsonify({"error": "JSON file not found on server"}), 404
 
-  return send_from_directory(str(SAIDA_DIR.resolve()), json_filename, as_attachment=True)
+  return send_from_directory(str(OUTPUT_DIR.resolve()), json_filename, as_attachment=True)
 
 
 if __name__ == "__main__":
