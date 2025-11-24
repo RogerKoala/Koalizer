@@ -18,7 +18,7 @@ fn main() {
         .setup(move |app| {
 
             {
-                let sidecar_command = app.shell().sidecar("backend-koalizer")
+                let sidecar_command = app.shell().sidecar("Server")
                     .expect("Failed to configure sidecar");
 
                 let (mut rx, child) = sidecar_command

@@ -6,9 +6,10 @@ import PyInstaller.__main__
 import os
 from PyInstaller.utils.hooks import collect_all, copy_metadata
 
-APP_NAME = "backend-koalizer"
+APP_NAME = "Server"
 MAIN_SCRIPT = "app.py"
 TAURI_BIN_DIR = os.path.join("..", "Frontend", "src-tauri", "binaries")
+FRONTEND_DIR = os.path.join("..", "Frontend")
 
 libs_to_collect = [
     'whisperx',
@@ -73,6 +74,7 @@ args = [
     '--clean',
     '--onefile',
     '--console',
+    '--icon=assets/icon.ico'
 ]
 
 sep = ';' if os.name == 'nt' else ':'
@@ -118,7 +120,7 @@ def get_rust_target_triple():
 
 
 if __name__ == '__main__':
-  print("--- STARTING BUILD (WITH LIGHTNING FIX) ---")
+  print("--- STARTING BUILD ---")
   PyInstaller.__main__.run(args)
   print("--- PYINSTALLER FINISHED. MOVING TO TAURI ---")
 
@@ -153,3 +155,25 @@ if __name__ == '__main__':
     print(f"ERROR moving file: {e}")
 
   print("--- BUILD FINISHED ---")
+
+  print("\n--- STARTING TAURI BUILD ---")
+
+  npm_cmd = "npm.cmd" if os.name == 'nt' else "npm"
+  frontend_dir_abs = os.path.abspath(os.path.join(current_dir, FRONTEND_DIR))
+
+  try:
+    print(f"Running '{npm_cmd} run tauri build' in {frontend_dir_abs}...")
+
+    subprocess.run(
+        [npm_cmd, "run", "tauri", "build"],
+        cwd=frontend_dir_abs,
+        check=True
+    )
+
+    print("\n TAURI BUILD FINISHED SUCCESSFULLY!")
+  except subprocess.CalledProcessError as e:
+    print(f"\n TAURI BUILD FAILED: {e}")
+    sys.exit(1)
+  except FileNotFoundError:
+    print(f"\nERROR: '{npm_cmd}' not found. Is Node.js installed?")
+    sys.exit(1)
