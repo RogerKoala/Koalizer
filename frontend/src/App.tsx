@@ -101,7 +101,6 @@ const App: React.FC = () => {
 
  const handleProcess = useCallback(
   async (input: File | string) => {
-   // validação mínima (FileUpload já valida)
    if (!input) {
     setError(t.selectFileFirst);
     return;

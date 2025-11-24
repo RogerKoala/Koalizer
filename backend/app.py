@@ -7,6 +7,7 @@ from threading import Thread
 from flask import Flask, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
+from youtube_utils import startup_check
 
 # Local imports
 from main import create_json
@@ -200,7 +201,7 @@ def upload():
 
     try:
       video_info = get_video_info(youtube_url)
-      print(f"Processing video: {video_info['title']}")
+      print(f"Processing video")
     except Exception as e:
       return jsonify({"error": f"Error accessing YouTube video: {str(e)}"}), 400
 
@@ -241,4 +242,5 @@ def get_json():
 
 
 if __name__ == "__main__":
+  startup_check()
   app.run(debug=True, host="0.0.0.0", port=5000)

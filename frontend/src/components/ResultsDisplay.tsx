@@ -148,12 +148,10 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
  };
 
  const handleSpeakerDelete = (speakerToDelete: string) => {
-  // Verificar se o locutor tem ALGUM segmento (ativo ou deletado)
   const hasSomeSegment = editableData.aligned_transcription.some(
    (segment) => segment.speaker === speakerToDelete
   );
 
-  // Se não tem nenhum segmento, excluir definitivamente
   if (!hasSomeSegment) {
    setSpeakerNameMap((prevMap) => {
     const newMap = { ...prevMap };
@@ -176,10 +174,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    return;
   }
 
-  // Marcar o locutor como deletado
   setDeletedSpeakers((prev) => new Set(prev).add(speakerToDelete));
 
-  // Marcar como deletado APENAS os segmentos que NÃO estavam deletados antes
   const newTranscription = editableData.aligned_transcription.map((segment) => {
    if (segment.speaker === speakerToDelete && !segment.isDeleted) {
     return { ...segment, isDeleted: true, deletedBySpeaker: true };
@@ -211,7 +207,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    return newSet;
   });
 
-  // Restaurar APENAS os segmentos que foram deletados pela exclusão do locutor
   const newTranscription = editableData.aligned_transcription.map((segment) => {
    if (segment.speaker === speakerToRestore && segment.deletedBySpeaker) {
     const { deletedBySpeaker, ...segmentWithoutFlag } = segment;
@@ -392,7 +387,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   const segmentToRestore = editableData.aligned_transcription[indexToUndo];
   const speakerOfSegment = segmentToRestore.speaker;
 
-  // Se o locutor foi excluído definitivamente, precisamos recriá-lo
   if (!speakerNameMap[speakerOfSegment]) {
    const match = speakerOfSegment.match(/(\d+)$/);
    let speakerName = speakerOfSegment;
@@ -432,7 +426,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   const newTranscription = editableData.aligned_transcription.map(
    (segment, index) => {
     if (index === indexToUndo) {
-     // Remove a flag deletedBySpeaker se existir
      const { deletedBySpeaker, ...segmentWithoutFlag } = segment;
      return { ...segmentWithoutFlag, isDeleted: false };
     }

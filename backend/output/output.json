@@ -1,0 +1,24 @@
+{
+  "aligned_transcription": [
+    {
+      "start": 18.408,
+      "end": 27.867,
+      "speaker": "SPEAKER_00",
+      "text": "Ei, você não pode falar assim com meu neto, óbvio que você ficou numa vitória!"
+    },
+    {
+      "start": 27.887,
+      "end": 29.413,
+      "speaker": "SPEAKER_01",
+      "text": "Alguém devia te colocar numa caixa aí abaixo, bobozinha! Acho que tem razão."
+    }
+  ],
+  "durations": {
+    "transcription_seconds": 16.20407485961914,
+    "alignment_seconds": 4.384371042251587,
+    "diarization_seconds": 17.235711812973022,
+    "total_words": 28,
+    "total_time": "00:00:29",
+    "audio_file": "input.wav"
+  }
+}

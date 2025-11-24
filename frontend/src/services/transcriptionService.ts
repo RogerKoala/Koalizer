@@ -37,30 +37,45 @@ export const processUploadWithStatus = async (
 
  onStatusUpdate({ status: "uploading" });
 
- try {
-  const uploadResponse = await fetch(`${BASE_URL}/upload`, {
-   method: "POST",
-   body: formData,
-  });
+ const MAX_TIMEOUT = 120000;
+ const startTime = Date.now();
 
-  if (!uploadResponse.ok) {
-   const errorText = await uploadResponse.text();
-   console.error(
-    `Falha no upload com status ${uploadResponse.status}: ${errorText}`
-   );
-   throw new Error(
-    isFile
-     ? "Falha ao enviar o arquivo para o servidor. Verifique se o backend está em execução."
-     : "Falha ao enviar o link do YouTube para o servidor. Verifique se o backend está em execução."
-   );
+ while (Date.now() - startTime < MAX_TIMEOUT) {
+  try {
+   const uploadResponse = await fetch(`${BASE_URL}/upload`, {
+    method: "POST",
+    body: formData,
+   });
+
+   if (uploadResponse.ok) {
+    break;
+   }
+
+   if (uploadResponse.status >= 400 && uploadResponse.status < 500) {
+    const errorText = await uploadResponse.text();
+    throw new Error(
+     `Upload failed with status ${uploadResponse.status}: ${errorText}`
+    );
+   }
+   throw new Error(`Server error: ${uploadResponse.status}`);
+  } catch (err: any) {
+   if (err.message && err.message.includes("Upload failed with status 4")) {
+    throw err;
+   }
+
+   const elapsed = Date.now() - startTime;
+
+   if (elapsed >= MAX_TIMEOUT) {
+    console.error("Network error during upload (Timeout):", err);
+    throw new Error(
+     isFile
+      ? "Could not connect to server to upload file after 120s. Try again!"
+      : "Could not connect to server to upload link after 120s. Try again!"
+    );
+   }
+
+   await sleep(2000);
   }
- } catch (err) {
-  console.error("Erro de rede durante o upload:", err);
-  throw new Error(
-   isFile
-    ? "Não foi possível conectar ao servidor para enviar o arquivo. Verifique sua conexão e se o backend está ativo."
-    : "Não foi possível conectar ao servidor para enviar o link. Verifique sua conexão e se o backend está ativo."
-  );
  }
 
  onStatusUpdate({ status: "queued" });
@@ -71,7 +86,7 @@ export const processUploadWithStatus = async (
    const checkResponse = await fetch(`${BASE_URL}/check_file`);
    if (!checkResponse.ok) {
     console.warn(
-     `Resposta não OK ao verificar status: ${checkResponse.status}`
+     `Non-OK response while checking status: ${checkResponse.status}`
     );
     await sleep(5000);
     continue;
@@ -82,7 +97,7 @@ export const processUploadWithStatus = async (
    if (result.state === "ready") {
     break;
    } else if (result.state === "error") {
-    throw new Error(`Erro no processamento: ${result.err}`);
+    throw new Error(`Processing error: ${result.err}`);
    }
 
    onStatusUpdate({
@@ -91,7 +106,7 @@ export const processUploadWithStatus = async (
 
    await sleep(5000);
   } catch (err) {
-   console.error("Erro de rede durante a verificação de status:", err);
+   console.error("Network error while checking status:", err);
    await sleep(5000);
   }
  }
@@ -101,17 +116,15 @@ export const processUploadWithStatus = async (
   if (!resultResponse.ok) {
    const errorText = await resultResponse.text();
    console.error(
-    `Falha ao buscar o resultado com status ${resultResponse.status}: ${errorText}`
+    `Failed to fetch result with status ${resultResponse.status}: ${errorText}`
    );
-   throw new Error("Falha ao buscar o arquivo de resultado da transcrição.");
+   throw new Error("Failed to fetch transcription result file.");
   }
 
   const data: TranscriptionResponse = await resultResponse.json();
   return data;
  } catch (err) {
-  console.error("Erro de rede ao buscar o resultado final:", err);
-  throw new Error(
-   "Não foi possível conectar ao servidor para obter o resultado final."
-  );
+  console.error("Network error fetching final result:", err);
+  throw new Error("Could not connect to server to retrieve final result.");
  }
 };

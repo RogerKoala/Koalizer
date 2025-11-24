@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-const isViewTransitionSupported = () => !!(document as any).startViewTransition;
+const isViewTransitionSupported = () => "startViewTransition" in document;
 
 export type Theme = "light" | "dark";
 
@@ -12,28 +12,27 @@ export const useTheme = () => {
  const getInitialTheme = (): Theme => {
   const saved = localStorage.getItem("theme");
   if (saved === "light" || saved === "dark") return saved;
-  return window.matchMedia("(prefers-color-scheme: light)").matches
-   ? "light"
-   : "dark";
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+   ? "dark"
+   : "light";
  };
 
  const [theme, setTheme] = useState<Theme>(getInitialTheme);
  const prevTheme = useRef(theme);
 
  useEffect(() => {
-  if (prevTheme.current !== theme) {
-   localStorage.setItem("theme", theme);
+  localStorage.setItem("theme", theme);
 
-   const changeTheme = () => applyTheme(theme);
+  const changeTheme = () => applyTheme(theme);
 
-   if (isViewTransitionSupported()) {
-    (document as any).startViewTransition(changeTheme);
-   } else {
-    changeTheme();
-   }
-
-   prevTheme.current = theme;
+  if (prevTheme.current !== theme && isViewTransitionSupported()) {
+   (document as any).startViewTransition(changeTheme);
+  } else {
+   changeTheme();
   }
+
+  prevTheme.current = theme;
  }, [theme]);
 
  const toggleTheme = () => {

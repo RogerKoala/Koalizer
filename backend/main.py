@@ -1,24 +1,32 @@
-import subprocess
-import re
-import tempfile
-import time
-import json
-from pathlib import Path
-from pydub import AudioSegment, silence
-import whisperx
-import torch
-import gc
-from whisperx.diarize import DiarizationPipeline
 import os
+import sys
+import json
+import time
+import tempfile
+import re
+import subprocess
+import gc
+import torch
+import whisperx
+from pathlib import Path
+from pydub import AudioSegment
 
-from shared import update_status, OUTPUT_DIR
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+  os.chdir(sys._MEIPASS)
+
+from whisperx.diarize import DiarizationPipeline
+from shared import update_status, OUTPUT_DIR, FFMPEG_PATH, PYANNOTE_PATH
+
 
 FFMPEG_VOLUME_RE = re.compile(r"mean_volume:\s*(-?\d+(\.\d+)?) dB")
+AudioSegment.converter = FFMPEG_PATH
+ffmpeg_dir = os.path.dirname(FFMPEG_PATH)
+os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ["PATH"]
 
 
 def probe_mean_volume(audio_path: str, offset_s: int, duration_s: int = 5) -> float | None:
   cmd = [
-      "ffmpeg", "-hide_banner", "-nostats",
+      FFMPEG_PATH, "-hide_banner", "-nostats",
       "-ss", str(offset_s), "-t", str(duration_s),
       "-i", str(audio_path),
       "-af", "volumedetect",
@@ -39,7 +47,7 @@ def extract_clip(audio_path: str, offset_s: int, duration_s: int = 30, out_path:
     out_path = tf.name
     tf.close()
   cmd = [
-      "ffmpeg", "-hide_banner", "-nostats",
+      FFMPEG_PATH, "-hide_banner", "-nostats",
       "-ss", str(offset_s), "-t", str(duration_s),
       "-i", str(audio_path),
       "-ar", "16000", "-ac", "1", "-y", str(out_path)
@@ -62,31 +70,25 @@ def detect_language_from_audio(audio_file, device, compute_type,
   audio_path = str(audio_file)
   chosen_clip = None
 
-  # 1) try quick probes at offsets
   for off in offsets:
     mean_v = probe_mean_volume(
         audio_path, offset_s=off, duration_s=probe_duration)
     if mean_v is None:
       continue
     if mean_v > volume_threshold_db:
-      # extract a larger sample for detection (sample_duration)
       chosen_clip = extract_clip(
           audio_path, offset_s=off, duration_s=sample_duration)
       break
-
-  # 2) if nothing found, try the start as a fallback
   if chosen_clip is None:
     print("No loud segment found in offsets. Extracting from start.")
     chosen_clip = extract_clip(
         audio_path, offset_s=0, duration_s=sample_duration)
 
-  # 3) detect language with a small model (only on the chosen clip)
   lang_model = whisperx.load_model("small", device, compute_type=compute_type)
   audio_data = whisperx.load_audio(str(chosen_clip))
   result = lang_model.transcribe(audio_data, batch_size=16)
   lang_code = result.get("language", None)
 
-  # cleanup temporary clip and model
   try:
     os.remove(chosen_clip)
   except OSError:
@@ -124,7 +126,6 @@ def process_audio_with_whisperx(audio_file):
   update_status(
       "aligning")
 
-  # free ASR model resources
   del model
   gc.collect()
   if device == "cuda":
@@ -139,7 +140,6 @@ def process_audio_with_whisperx(audio_file):
   update_status(
       "diarizing")
 
-  # free alignment model resources
   del model_a
   gc.collect()
   if device == "cuda":
@@ -147,7 +147,7 @@ def process_audio_with_whisperx(audio_file):
 
   start_dia = time.time()
   diarize_model = DiarizationPipeline(
-      model_name="models/pyannote_diarization_config.yaml", device=device)
+      model_name=PYANNOTE_PATH, device=device)
   result_diarization = diarize_model(
       audio_file, min_speakers=None, max_speakers=None)
   time_dia = time.time() - start_dia
@@ -189,7 +189,6 @@ def create_json(file_path, output_path):
         current_segment['text'] += " " + text
         current_segment['end'] = segment['end']
 
-        # Count words if present
         if 'words' in segment:
           total_words += len(segment['words'])
       else:

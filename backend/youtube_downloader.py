@@ -1,7 +1,9 @@
-import yt_dlp
 from pathlib import Path
 import logging
 import re
+import subprocess
+import json
+from shared import YTDLP_PATH, FFMPEG_PATH
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,30 +28,34 @@ def download_youtube_audio(url: str, output_dir: Path, filename: str = "youtube_
     output_dir.mkdir(exist_ok=True, parents=True)
     output_path = output_dir / f"{filename}.wav"
 
-    ydl_opts = {
-        'outtmpl': str(output_dir / f"{filename}.%(ext)s"),
-        'format': 'bestaudio/best',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'wav',
-            'preferredquality': '0',
-        }],
-        'noplaylist': True,
-        'quiet': False,
-        'no_warnings': False,
-    }
+    output_template = str(output_dir / f"{filename}.%(ext)s")
+
+    command = [
+        str(YTDLP_PATH),
+        '--format', 'bestaudio/best',
+        '--extract-audio',
+        '--audio-format', 'wav',
+        '--audio-quality', '0',
+        '--output', output_template,
+        '--no-playlist',
+        '--ffmpeg-location', FFMPEG_PATH,
+        url
+    ]
 
     logger.info(f"Starting YouTube download: {url}")
+    logger.info(f"Command: {' '.join(command)}")
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-      info = ydl.extract_info(url, download=False)
-      video_title = info.get('title', 'Unknown')
-      duration = info.get('duration', 0)
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        check=True
+    )
 
-      logger.info(f"Video title: {video_title}")
-      logger.info(f"Duration: {duration} seconds")
+    logger.info(f"yt-dlp output: {result.stdout}")
 
-      ydl.download([url])
+    if result.stderr:
+      logger.warning(f"yt-dlp warnings: {result.stderr}")
 
     if not output_path.exists():
       possible_files = list(output_dir.glob(f"{filename}.*"))
@@ -63,6 +69,9 @@ def download_youtube_audio(url: str, output_dir: Path, filename: str = "youtube_
     logger.info(f"Download completed: {output_path}")
     return output_path
 
+  except subprocess.CalledProcessError as e:
+    logger.error(f"YouTube download error: {e.stderr}")
+    raise Exception(f"YouTube download failed: {e.stderr}")
   except Exception as e:
     logger.error(f"YouTube download error: {str(e)}")
     raise Exception(f"YouTube download failed: {str(e)}")
@@ -100,25 +109,41 @@ def get_video_info(url: str) -> dict:
       url (str): YouTube video URL
 
   Returns:
-      dict: Video information (title, duration, etc.)
+      dict: Video information (duration)
   """
   try:
-    ydl_opts = {
-        'quiet': True,
-        'no_warnings': True,
+    command = [
+        str(YTDLP_PATH),
+        '--dump-json',
+        '--no-playlist',
+        url
+    ]
+
+    logger.info(f"Retrieving video info: {url}")
+
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        check=True
+    )
+
+    # Parse do JSON retornado
+    info = json.loads(result.stdout)
+
+    return {
+        'duration': info.get('duration', 0),
+        'uploader': info.get('uploader', 'Unknown'),
+        'view_count': info.get('view_count', 0),
+        'upload_date': info.get('upload_date', 'Unknown'),
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-      info = ydl.extract_info(url, download=False)
-
-      return {
-          'title': info.get('title', 'Unknown'),
-          'duration': info.get('duration', 0),
-          'uploader': info.get('uploader', 'Unknown'),
-          'view_count': info.get('view_count', 0),
-          'upload_date': info.get('upload_date', 'Unknown'),
-      }
-
+  except subprocess.CalledProcessError as e:
+    logger.error(f"Error retrieving video info: {e.stderr}")
+    raise Exception(f"Unable to retrieve video information: {e.stderr}")
+  except json.JSONDecodeError as e:
+    logger.error(f"Error parsing video info JSON: {str(e)}")
+    raise Exception(f"Unable to parse video information: {str(e)}")
   except Exception as e:
     logger.error(f"Error retrieving video info: {str(e)}")
     raise Exception(f"Unable to retrieve video information: {str(e)}")
