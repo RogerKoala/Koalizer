@@ -14,8 +14,7 @@ def resource_path(relative_path):
 
 UPLOAD_DIR = Path("upload")
 OUTPUT_DIR = Path("output")
-UPLOAD_DIR.mkdir(exist_ok=True, parents=True)
-OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
+
 
 ALLOWED_EXT = {".wav", ".mp3", ".m4a",
                ".flac", ".ogg", ".opus", ".amr", ".mp4", ".mov", ".mkv", ".avi"}

@@ -177,6 +177,8 @@ def create_json(file_path, output_path):
   total_words = 0
   current_segment = None
 
+  sentence_endings = ['.', '?', '!']
+
   if 'segments' in result_final:
     for segment in result_final['segments']:
       text = segment.get('text', '').strip()
@@ -186,6 +188,16 @@ def create_json(file_path, output_path):
       speaker = segment.get('speaker', 'UNKNOWN')
 
       if current_segment and current_segment['speaker'] == speaker:
+        prev_text = current_segment['text'].strip()
+        last_char = prev_text[-1] if prev_text else ""
+
+        if last_char in sentence_endings:
+          if len(text) > 0:
+            text = text[0].upper() + text[1:]
+        else:
+          if len(text) > 0:
+            text = text[0].lower() + text[1:]
+
         current_segment['text'] += " " + text
         current_segment['end'] = segment['end']
 

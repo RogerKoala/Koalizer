@@ -352,7 +352,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
      {selectedFile && !fileError && (
       <div className="w-full text-center bg-slate-100 dark:bg-slate-700 p-3 rounded-lg">
-       <p className="text-slate-700 dark:text-slate-200 font-medium">
+       <p className="truncate text-slate-700 dark:text-slate-200 font-medium">
         {t.selectedFile}:{" "}
         <span className="text-sky-600 dark:text-sky-400">
          {selectedFile.name}
@@ -426,7 +426,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
      {selectedJsonFile && !jsonError && (
       <div className="w-full text-center bg-slate-100 dark:bg-slate-700 p-3 rounded-lg">
-       <p className="text-slate-700 dark:text-slate-200 font-medium">
+       <p className="truncate text-slate-700 dark:text-slate-200 font-medium">
         {t.selectedFile}:{" "}
         <span className="text-sky-600 dark:text-sky-400">
          {selectedJsonFile.name}

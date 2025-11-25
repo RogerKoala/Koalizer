@@ -10,7 +10,6 @@ import TranscriptionCard from "./TranscriptionCard";
 import AddSegmentButton from "./AddSegmentButton";
 import SpeakerManager from "./SpeakerManager";
 import ToastNotification from "./ToastNotification";
-import { jsPDF } from "jspdf";
 import { Translations } from "../i18n";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/solid";
 import {
@@ -18,8 +17,9 @@ import {
  Bars4Icon,
  UserGroupIcon,
 } from "@heroicons/react/24/outline";
-import { save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { countWords, formatSecondsToHMS } from "../utils/formatters";
+import { generateAndSavePDF } from "../services/pdfExportService";
+import { saveProjectToJSON } from "../services/jsonExportService";
 
 interface ResultsDisplayProps {
  data: TranscriptionResponse;
@@ -28,46 +28,6 @@ interface ResultsDisplayProps {
  t: Translations;
  importedState?: SavedAppState | null;
 }
-
-interface FileSystemFileHandle {
- createWritable(): Promise<FileSystemWritableFileStream>;
-}
-
-interface FileSystemWritableFileStream {
- write(data: ArrayBuffer): Promise<void>;
- close(): Promise<void>;
-}
-
-declare global {
- interface Window {
-  jspdf: any;
-  showSaveFilePicker: (options?: {
-   suggestedName?: string;
-   types?: {
-    description: string;
-    accept: { [mimeType: string]: string[] };
-   }[];
-  }) => Promise<FileSystemFileHandle>;
- }
-}
-
-const countWords = (text: string): number => {
- if (!text) return 0;
- return text.trim().split(/\s+/).filter(Boolean).length;
-};
-
-const formatSecondsToHMS = (seconds: number): string => {
- const totalSeconds = Math.floor(seconds);
- const hours = Math.floor(totalSeconds / 3600);
- const minutes = Math.floor((totalSeconds % 3600) / 60);
- const remainingSeconds = totalSeconds % 60;
-
- const paddedHours = hours.toString().padStart(2, "0");
- const paddedMinutes = minutes.toString().padStart(2, "0");
- const paddedSeconds = remainingSeconds.toString().padStart(2, "0");
-
- return `${paddedHours}:${paddedMinutes}:${paddedSeconds}`;
-};
 
 const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
  data,
@@ -89,10 +49,16 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
  const [deletedSpeakers, setDeletedSpeakers] = useState<Set<string>>(new Set());
  const [isSavingPDF, setIsSavingPDF] = useState<boolean>(false);
  const [isSavingJSON, setIsSavingJSON] = useState<boolean>(false);
- const [showSaveSuccessToast, setShowSaveSuccessToast] =
-  useState<boolean>(false);
- const [showJsonSuccessToast, setShowJsonSuccessToast] =
-  useState<boolean>(false);
+
+ const [toastConfig, setToastConfig] = useState<{
+  show: boolean;
+  message: string;
+  type: "success" | "error";
+ }>({
+  show: false,
+  message: "",
+  type: "success",
+ });
 
  useEffect(() => {
   if (importedState) {
@@ -139,6 +105,17 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   setEditableData(data);
   setEditableDurations(data.durations);
  }, [data, importedState]);
+
+ const showToast = (message: string, type: "success" | "error" = "success") => {
+  setToastConfig({
+   show: true,
+   message,
+   type,
+  });
+  setTimeout(() => {
+   setToastConfig((prev) => ({ ...prev, show: false }));
+  }, 3000);
+ };
 
  const handleSpeakerNameChange = (originalSpeaker: string, newName: string) => {
   setSpeakerNameMap((prevMap) => ({
@@ -472,13 +449,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   }));
  };
 
- const showSuccessToast = () => {
-  setShowSaveSuccessToast(true);
-  setTimeout(() => {
-   setShowSaveSuccessToast(false);
-  }, 3000);
- };
-
  const handleExportPDF = async () => {
   if (isSavingPDF) return;
 
@@ -487,206 +457,28 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   );
 
   if (hasEmptySpeakerName) {
-   alert(t.exportPDFAlert);
+   showToast(t.exportPDFAlert, "error");
    return;
   }
 
   setIsSavingPDF(true);
   try {
-   const doc = new jsPDF({
-    orientation: "p",
-    unit: "pt",
-    format: "a4",
+   await generateAndSavePDF({
+    fileName,
+    transcriptionData: editableData,
+    speakerNameMap,
+    durations: editableDurations,
+    t,
    });
-
-   const formatTime = (seconds: number): string => {
-    return formatSecondsToHMS(seconds);
-   };
-
-   const FONT_SIZES = {
-    title: 24,
-    heading1: 18,
-    heading2: 14,
-    body: 11,
-    meta: 9,
-   };
-   const COLORS = {
-    heading: "#1E293B",
-    body: "#334155",
-    meta: "#64748B",
-    primary: "#0284C7",
-   };
-   const MARGIN = 50;
-   const page = {
-    width: doc.internal.pageSize.getWidth(),
-    height: doc.internal.pageSize.getHeight(),
-   };
-   const usableWidth = page.width - MARGIN * 2;
-   let cursorY = MARGIN;
-
-   const addPageNumbers = () => {
-    const pageCount = (doc as any).internal.getNumberOfPages();
-    doc.setFontSize(FONT_SIZES.meta);
-    doc.setTextColor(COLORS.meta);
-    for (let i = 1; i <= pageCount; i++) {
-     doc.setPage(i);
-     doc.text(
-      `${t.pdfPage} ${i} ${t.pdfOf} ${pageCount}`,
-      page.width / 2,
-      page.height - 20,
-      {
-       align: "center",
-      }
-     );
-    }
-   };
-
-   const checkPageBreak = (spaceNeeded: number) => {
-    if (cursorY + spaceNeeded > page.height - MARGIN) {
-     doc.addPage();
-     cursorY = MARGIN;
-    }
-   };
-
-   doc.setFontSize(FONT_SIZES.title);
-   doc.setFont("helvetica", "bold");
-   doc.setTextColor(COLORS.heading);
-   doc.text(t.pdfTitle, page.width / 2, cursorY + 20, {
-    align: "center",
-   });
-   cursorY += 80;
-
-   doc.setFontSize(FONT_SIZES.body);
-   doc.setFont("helvetica", "normal");
-   doc.setTextColor(COLORS.body);
-   doc.text(`${t.pdfSourceFile}: ${fileName}`, page.width / 2, cursorY, {
-    align: "center",
-   });
-   cursorY += 20;
-
-   const generationDate = new Date().toLocaleString();
-   doc.text(`${t.pdfGeneratedAt}: ${generationDate}`, page.width / 2, cursorY, {
-    align: "center",
-   });
-
-   doc.addPage();
-   cursorY = MARGIN;
-   doc.setFontSize(FONT_SIZES.heading1);
-   doc.setFont("helvetica", "bold");
-   doc.setTextColor(COLORS.heading);
-   doc.text(t.pdfTranscription, MARGIN, cursorY);
-   cursorY += FONT_SIZES.heading1 * 2;
-
-   const filteredTranscription = editableData.aligned_transcription.filter(
-    (segment) => !segment.isDeleted
-   );
-
-   filteredTranscription.forEach((segment) => {
-    const speakerName = speakerNameMap[segment.speaker] || segment.speaker;
-    const timeInfo = `${formatTime(segment.start)}:`;
-    const headerHeight = FONT_SIZES.heading2 * 1.5;
-    const singleLineHeight = FONT_SIZES.body * 1.2;
-
-    checkPageBreak(headerHeight + singleLineHeight + 25);
-
-    doc.setFontSize(FONT_SIZES.meta);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(COLORS.meta);
-    doc.text(timeInfo, MARGIN, cursorY);
-
-    const timeInfoWidth = doc.getTextWidth(timeInfo);
-    const speakerXPosition = MARGIN + timeInfoWidth + 5;
-
-    doc.setFontSize(FONT_SIZES.heading2);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(COLORS.primary);
-    doc.text(speakerName, speakerXPosition, cursorY);
-
-    cursorY += headerHeight;
-
-    doc.setFontSize(FONT_SIZES.body);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(COLORS.body);
-    const textLines = doc.splitTextToSize(segment.text, usableWidth);
-
-    textLines.forEach((line: string) => {
-     checkPageBreak(singleLineHeight);
-     doc.text(line, MARGIN, cursorY, { align: "left" });
-     cursorY += singleLineHeight;
-    });
-
-    cursorY += 25;
-   });
-
-   doc.addPage();
-   cursorY = MARGIN;
-   doc.setFontSize(FONT_SIZES.heading1);
-   doc.setFont("helvetica", "bold");
-   doc.setTextColor(COLORS.heading);
-   doc.text(t.pdfSummary, MARGIN, cursorY);
-   cursorY += FONT_SIZES.heading1 * 1.5;
-
-   const totalWordsForPDF = editableData.aligned_transcription.reduce(
-    (total, segment) =>
-     total + (segment.isDeleted ? 0 : countWords(segment.text)),
-    0
-   );
-
-   const summaryItems = {
-    [t.audioDuration]:
-     editableDurations.total_time ||
-     formatTime(editableDurations.total_seconds),
-    [t.totalWords]: totalWordsForPDF.toString(),
-   };
-
-   doc.setFontSize(FONT_SIZES.body);
-   Object.entries(summaryItems).forEach(([label, value]) => {
-    checkPageBreak(30);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(COLORS.heading);
-    doc.text(`${label}:`, MARGIN, cursorY);
-
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(COLORS.body);
-    doc.text(value, MARGIN + 140, cursorY);
-
-    cursorY += FONT_SIZES.body * 1.8;
-   });
-
-   addPageNumbers();
-
-   const suggestedName = fileName.replace(/\.wav$/i, ".pdf");
-   if (window.showSaveFilePicker) {
-    try {
-     const handle = await window.showSaveFilePicker({
-      suggestedName,
-      types: [
-       {
-        description: "PDF Documents",
-        accept: { "application/pdf": [".pdf"] },
-       },
-      ],
-     });
-     const writable = await handle.createWritable();
-     await writable.write(doc.output("arraybuffer"));
-     await writable.close();
-     showSuccessToast();
-    } catch (err: any) {
-     if (err.name !== "AbortError") {
-      console.error("Error saving file with File System Access API:", err);
-      doc.save(suggestedName);
-      showSuccessToast();
-     } else {
-      console.log("User cancelled the save dialog.");
-     }
-    }
-   } else {
-    doc.save(suggestedName);
-    showSuccessToast();
+   showToast(t.fileSavedSuccess, "success");
+  } catch (e: any) {
+   if (e.message !== "cancelled") {
+    console.error("Failed to generate PDF:", e);
+    showToast(
+     "An unexpected error occurred while generating the PDF.",
+     "error"
+    );
    }
-  } catch (e) {
-   console.error("Failed to generate PDF:", e);
-   alert("An unexpected error occurred while generating the PDF.");
   } finally {
    setIsSavingPDF(false);
   }
@@ -694,11 +486,11 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 
  const handleExportJSON = async () => {
   if (isSavingJSON) return;
-
   setIsSavingJSON(true);
+
   try {
    const appState: SavedAppState = {
-    version: "1.0.0",
+    version: "0.1.1",
     fileName: fileName,
     savedAt: new Date().toISOString(),
     transcriptionData: editableData,
@@ -708,33 +500,13 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     deletedSpeakers: Array.from(deletedSpeakers),
    };
 
-   const jsonContent = JSON.stringify(appState, null, 2);
-   const suggestedName = fileName.replace(/\.wav$/i, ".json");
-
-   const filePath = await save({
-    defaultPath: suggestedName,
-    filters: [
-     {
-      name: "JSON",
-      extensions: ["json"],
-     },
-    ],
-   });
-
-   if (filePath) {
-    await writeTextFile(filePath, jsonContent);
-    setShowJsonSuccessToast(true);
-    setTimeout(() => {
-     setShowJsonSuccessToast(false);
-    }, 3000);
+   const result = await saveProjectToJSON(fileName, appState);
+   if (result) {
+    showToast(t.jsonSavedSuccess, "success");
    }
   } catch (err: any) {
-   if (err.message && err.message.includes("cancelled")) {
-    console.log("User cancelled the save dialog.");
-   } else {
-    console.error("Failed to export JSON:", err);
-    alert(t.exportJsonError);
-   }
+   console.error("Failed to export JSON:", err);
+   showToast(t.exportJsonError, "error");
   } finally {
    setIsSavingJSON(false);
   }
@@ -761,7 +533,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
  return (
   <div className="space-y-8">
    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-    <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2 sm:mb-0">
+    <h2 className="overflow-hidden text-ellipsis text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2 sm:mb-0">
      {t.analysisOf}
      <span className="text-sky-600 dark:text-sky-400">{fileName}</span>
     </h2>
@@ -910,16 +682,11 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    </div>
 
    <ToastNotification
-    message={t.fileSavedSuccess}
-    show={showSaveSuccessToast}
-    onClose={() => setShowSaveSuccessToast(false)}
+    message={toastConfig.message}
+    show={toastConfig.show}
+    onClose={() => setToastConfig((prev) => ({ ...prev, show: false }))}
     t={t}
-   />
-   <ToastNotification
-    message={t.jsonSavedSuccess}
-    show={showJsonSuccessToast}
-    onClose={() => setShowJsonSuccessToast(false)}
-    t={t}
+    type={toastConfig.type}
    />
   </div>
  );

@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Translations } from "../i18n";
-import { CheckCircleIcon } from "@heroicons/react/24/solid";
+import {
+ CheckCircleIcon,
+ ExclamationCircleIcon,
+} from "@heroicons/react/24/solid";
 import { XCircleIcon } from "@heroicons/react/24/outline";
 
 interface ToastNotificationProps {
@@ -11,6 +14,7 @@ interface ToastNotificationProps {
  t: Translations;
  onUndo?: () => void;
  showUndo?: boolean;
+ type?: "success" | "error";
 }
 
 const ToastNotification: React.FC<ToastNotificationProps> = ({
@@ -20,6 +24,7 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({
  t,
  onUndo,
  showUndo = false,
+ type = "success",
 }) => {
  const [isMounted, setIsMounted] = useState(false);
 
@@ -45,7 +50,12 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({
           : "opacity-0 -translate-y-full pointer-events-none"
         }`}
   >
-   <CheckCircleIcon className="size-10 fill-[#04ff00]" />
+   {type === "success" ? (
+    <CheckCircleIcon className="size-10 fill-[#04ff00]" />
+   ) : (
+    <ExclamationCircleIcon className="size-10 fill-red-500" />
+   )}
+
    <div className="flex-1">
     <div className="text-sm font-semibold">{message}</div>
     {showUndo && onUndo && (

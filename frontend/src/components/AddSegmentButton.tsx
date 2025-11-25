@@ -48,7 +48,7 @@ const AddSegmentButton: React.FC<AddSegmentButtonProps> = ({
 
  return (
   <div
-   className="relative flex justify-center items-center my-2 z-50"
+   className="relative flex justify-center items-center my-2"
    ref={wrapperRef}
   >
    <button
@@ -78,7 +78,7 @@ const AddSegmentButton: React.FC<AddSegmentButtonProps> = ({
    </button>
 
    {showSelect && availableSpeakers && availableSpeakers.length > 0 && (
-    <div className="absolute z-50 top-full mt-2 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fadeIn">
+    <div className="absolute top-full mt-2 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fadeIn z-1">
      <div className="p-3 bg-gradient-to-r from-sky-50 to-blue-50 dark:from-slate-700 dark:to-slate-600 border-b border-slate-200 dark:border-slate-600">
       <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
        {t.selectSpeaker}

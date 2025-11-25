@@ -1,33 +1,35 @@
 // Prevents an extra console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 use tauri::RunEvent;
-use std::process::Command;
 
 #[cfg(not(debug_assertions))]
-use tauri_plugin_shell::ShellExt;
+use tauri_plugin_shell::process::CommandEvent;
 #[cfg(not(debug_assertions))]
-use tauri_plugin_shell::process::{CommandEvent};
+use tauri_plugin_shell::ShellExt;
 
 fn main() {
     #[cfg(not(debug_assertions))]
     let backend_pid: Arc<Mutex<Option<u32>>> = Arc::new(Mutex::new(None));
-    
+
     #[cfg(not(debug_assertions))]
     let backend_pid_clone = backend_pid.clone();
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .setup(move |_app| {
             #[cfg(not(debug_assertions))]
             {
-                let sidecar_command = _app.shell().sidecar("Server")
+                let sidecar_command = _app
+                    .shell()
+                    .sidecar("Server")
                     .expect("Failed to configure sidecar");
 
-                let (mut rx, child) = sidecar_command
-                    .spawn()
-                    .expect("Failed to start sidecar");
+                let (mut rx, child) = sidecar_command.spawn().expect("Failed to start sidecar");
 
                 let pid = child.pid();
                 println!("Sidecar started with PID: {}", pid);
@@ -62,24 +64,22 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("failed to build tauri app");
 
-    app.run(move |_app_handle, event| {
-        match event {
-            RunEvent::ExitRequested { .. } => {
-                #[cfg(not(debug_assertions))]
-                {
-                    println!("App closing, executing TASKKILL on sidecar...");
-                    
-                    let lock = backend_pid.lock().unwrap();
-                    if let Some(pid) = *lock {
-                        let _ = Command::new("taskkill")
-                            .args(["/F", "/T", "/PID", &pid.to_string()])
-                            .output();
-                            
-                        println!("Taskkill command sent to PID {}", pid);
-                    }
+    app.run(move |_app_handle, event| match event {
+        RunEvent::ExitRequested { .. } => {
+            #[cfg(not(debug_assertions))]
+            {
+                println!("App closing, executing TASKKILL on sidecar...");
+
+                let lock = backend_pid.lock().unwrap();
+                if let Some(pid) = *lock {
+                    let _ = Command::new("taskkill")
+                        .args(["/F", "/T", "/PID", &pid.to_string()])
+                        .output();
+
+                    println!("Taskkill command sent to PID {}", pid);
                 }
             }
-            _ => {}
         }
+        _ => {}
     });
 }

@@ -164,6 +164,9 @@ def upload():
   if request.method == "OPTIONS":
     return ("", 200)
 
+  UPLOAD_DIR.mkdir(exist_ok=True, parents=True)
+  OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
+
   # File upload
   if "file" in request.files:
     f = request.files["file"]
