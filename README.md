@@ -1,4 +1,4 @@
-# Koalizer
+# Koalizer v0.1.1
 
 🇺🇸 English | 🇧🇷 Português
 
