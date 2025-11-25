@@ -32,7 +32,6 @@ Before running or building, ensure you have:
 *   Node.js & npm installed.
 *   Rust installed (via `rustup`).
 *   Python 3.10 or higher.
-*   FFmpeg installed on your system (for development).
 *   C++ Build Tools (Visual Studio) if on Windows (required for some Python libs).
 
 ### 📂 Project Structure
@@ -122,7 +121,6 @@ Antes de rodar ou compilar, certifique-se de ter:
 *   Node.js & npm instalados.
 *   Rust instalado (via `rustup`).
 *   Python 3.10 ou superior.
-*   FFmpeg instalado no sistema (para desenvolvimento).
 *   C++ Build Tools (Visual Studio) se estiver no Windows (necessário para algumas libs Python).
 
 ### 📂 Estrutura do Projeto
