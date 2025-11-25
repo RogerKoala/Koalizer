@@ -21,7 +21,7 @@ Koalizer is a powerful desktop application built with Tauri and Python designed 
 
 *   **Frontend:** React, TypeScript, Tailwind CSS.
 *   **Core:** Tauri v2 (Rust).
-*   **Backend:** Python 3.10+, Flask (API), PyTorch.
+*   **Backend:** Python 3.10, Flask (API), PyTorch.
 *   **AI Models:** WhisperX, Pyannote.
 *   **Packaging:** PyInstaller (Backend), Tauri Bundler (App).
 
@@ -87,7 +87,6 @@ What this script does:
 
 *   Uses PyInstaller to compile `app.py` into a standalone executable.
 *   Includes all complex dependencies (Torch, WhisperX, Pyannote, Certifi).
-*   Detects your system architecture (e.g., `x86_64-pc-windows-msvc`).
 *   Moves and renames the executable to `frontend/src-tauri/binaries/`.
 *   Automatically triggers `npm run tauri build` in the `Frontend` folder.
 
@@ -112,7 +111,7 @@ Koalizer é uma aplicação desktop desenvolvida com Tauri e Python, projetada p
 
 *   **Frontend:** React, TypeScript, Tailwind CSS.
 *   **Core:** Tauri v2 (Rust).
-*   **Backend:** Python 3.10+, Flask (API), PyTorch.
+*   **Backend:** Python 3.10, Flask (API), PyTorch.
 *   **Modelos AI:** WhisperX, Pyannote.
 *   **Empacotamento:** PyInstaller (Backend), Tauri Bundler (App).
 
@@ -178,7 +177,6 @@ O que este script faz:
 
 *   Usa PyInstaller para compilar `app.py` em um executável autônomo.
 *   Inclui todas as dependências complexas (Torch, WhisperX, Pyannote, Certifi).
-*   Detecta a arquitetura do seu sistema (ex: `x86_64-pc-windows-msvc`).
 *   Move e renomeia o executável para `frontend/src-tauri/binaries/`.
 *   Dispara automaticamente o `npm run tauri build` na pasta do Frontend.
 
