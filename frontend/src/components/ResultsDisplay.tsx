@@ -44,7 +44,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   [key: string]: { bg: string; bgUser: string; text: string; border: string };
  }>({});
  const [editableDurations, setEditableDurations] = useState<Durations>(
-  data.durations
+  data.durations,
  );
  const [deletedSpeakers, setDeletedSpeakers] = useState<Set<string>>(new Set());
  const [isSavingPDF, setIsSavingPDF] = useState<boolean>(false);
@@ -78,27 +78,35 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    ...new Set(data.aligned_transcription.map((s) => s.speaker)),
   ].sort();
 
-  const initialNameMap = uniqueSpeakers.reduce((acc, speaker: string) => {
-   const match = speaker.match(/(\d+)$/);
-   if (match) {
-    const speakerNum = parseInt(match[1], 10);
-    acc[speaker] = `${t.person} ${String(speakerNum + 1).padStart(2, "0")}`;
-   } else {
-    acc[speaker] = speaker;
-   }
-   return acc;
-  }, {} as { [key: string]: string });
+  const initialNameMap = uniqueSpeakers.reduce(
+   (acc, speaker: string) => {
+    const match = speaker.match(/(\d+)$/);
+    if (match) {
+     const speakerNum = parseInt(match[1], 10);
+     acc[speaker] = `${t.person} ${String(speakerNum + 1).padStart(2, "0")}`;
+    } else {
+     acc[speaker] = speaker;
+    }
+    return acc;
+   },
+   {} as { [key: string]: string },
+  );
 
-  const initialColorMap = uniqueSpeakers.reduce((acc, speaker: string) => {
-   const hue = Math.floor(Math.random() * 360);
-   acc[speaker] = {
-    bg: `hsl(${hue}, 70%, 95%)`,
-    bgUser: `hsl(${hue}, 80%, 25%, 0.4)`,
-    text: `hsl(${hue}, 80%, 25%)`,
-    border: `hsl(${hue}, 60%, 80%)`,
-   };
-   return acc;
-  }, {} as { [key: string]: { bg: string; bgUser: string; text: string; border: string } });
+  const initialColorMap = uniqueSpeakers.reduce(
+   (acc, speaker: string) => {
+    const hue = Math.floor(Math.random() * 360);
+    acc[speaker] = {
+     bg: `hsl(${hue}, 70%, 95%)`,
+     bgUser: `hsl(${hue}, 80%, 25%, 0.4)`,
+     text: `hsl(${hue}, 80%, 25%)`,
+     border: `hsl(${hue}, 60%, 80%)`,
+    };
+    return acc;
+   },
+   {} as {
+    [key: string]: { bg: string; bgUser: string; text: string; border: string };
+   },
+  );
 
   setSpeakerNameMap(initialNameMap);
   setSpeakerColorMap(initialColorMap);
@@ -126,7 +134,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 
  const handleSpeakerDelete = (speakerToDelete: string) => {
   const hasSomeSegment = editableData.aligned_transcription.some(
-   (segment) => segment.speaker === speakerToDelete
+   (segment) => segment.speaker === speakerToDelete,
   );
 
   if (!hasSomeSegment) {
@@ -163,7 +171,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   const newTotalWords = newTranscription.reduce(
    (total, segment) =>
     total + (segment.isDeleted ? 0 : countWords(segment.text)),
-   0
+   0,
   );
 
   setEditableData((prevData) => ({
@@ -195,7 +203,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   const newTotalWords = newTranscription.reduce(
    (total, segment) =>
     total + (segment.isDeleted ? 0 : countWords(segment.text)),
-   0
+   0,
   );
 
   setEditableData((prevData) => ({
@@ -246,7 +254,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   index: number,
   selectedSpeaker: string,
   startTime: number,
-  endTime: number
+  endTime: number,
  ) => {
   const newSegment: TranscriptionSegment = {
    start: startTime,
@@ -300,7 +308,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 
  const handleSegmentChange = (
   index: number,
-  updatedSegment: Partial<TranscriptionSegment>
+  updatedSegment: Partial<TranscriptionSegment>,
  ) => {
   if (updatedSegment.speaker !== undefined) {
    const originalSpeakerId = editableData.aligned_transcription[index].speaker;
@@ -318,7 +326,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    const newTotalWords = newTranscription.reduce(
     (total, segment) =>
      total + (segment.isDeleted ? 0 : countWords(segment.text)),
-    0
+    0,
    );
 
    setEditableData((prevData) => ({
@@ -340,13 +348,13 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
      return { ...segment, isDeleted: true };
     }
     return segment;
-   }
+   },
   );
 
   const newTotalWords = newTranscription.reduce(
    (total, segment) =>
     total + (segment.isDeleted ? 0 : countWords(segment.text)),
-   0
+   0,
   );
 
   setEditableData((prevData) => ({
@@ -407,13 +415,13 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
      return { ...segmentWithoutFlag, isDeleted: false };
     }
     return segment;
-   }
+   },
   );
 
   const newTotalWords = newTranscription.reduce(
    (total, segment) =>
     total + (segment.isDeleted ? 0 : countWords(segment.text)),
-   0
+   0,
   );
 
   setEditableData((prevData) => ({
@@ -429,13 +437,13 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 
  const handleSegmentPermanentDelete = (indexToDelete: number) => {
   const newTranscription = editableData.aligned_transcription.filter(
-   (_, index) => index !== indexToDelete
+   (_, index) => index !== indexToDelete,
   );
 
   const newTotalWords = newTranscription.reduce(
    (total, segment) =>
     total + (segment.isDeleted ? 0 : countWords(segment.text)),
-   0
+   0,
   );
 
   setEditableData((prevData) => ({
@@ -453,7 +461,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   if (isSavingPDF) return;
 
   const hasEmptySpeakerName = Object.values(speakerNameMap).some(
-   (name) => name.trim() === ""
+   (name) => name.trim() === "",
   );
 
   if (hasEmptySpeakerName) {
@@ -476,7 +484,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     console.error("Failed to generate PDF:", e);
     showToast(
      "An unexpected error occurred while generating the PDF.",
-     "error"
+     "error",
     );
    }
   } finally {
@@ -490,7 +498,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 
   try {
    const appState: SavedAppState = {
-    version: "0.1.1",
+    version: "0.1.2",
     fileName: fileName,
     savedAt: new Date().toISOString(),
     transcriptionData: editableData,
@@ -517,7 +525,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    return true;
   }
   return Object.entries(speakerNameMap).some(
-   ([speaker, name]) => !deletedSpeakers.has(speaker) && name.trim() === ""
+   ([speaker, name]) => !deletedSpeakers.has(speaker) && name.trim() === "",
   );
  }, [speakerNameMap, deletedSpeakers]);
 
