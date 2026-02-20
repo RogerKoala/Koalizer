@@ -64,7 +64,7 @@ const App: React.FC = () => {
    const savedLang = localStorage.getItem("language");
    if (savedLang === "en" || savedLang === "pt") return savedLang;
   }
-  return "pt";
+  return "en";
  });
 
  const { theme, setTheme } = useTheme();
@@ -78,7 +78,7 @@ const App: React.FC = () => {
  const isValidFile = (file: File): boolean => {
   const fileName = file.name.toLowerCase();
   const hasValidExtension = ACCEPTED_EXTENSIONS.some((ext) =>
-   fileName.endsWith(ext)
+   fileName.endsWith(ext),
   );
   const hasValidMimeType = ACCEPTED_MIME_TYPES.includes(file.type);
 
@@ -113,7 +113,7 @@ const App: React.FC = () => {
 
    try {
     const data = await processUploadWithStatus(input, (status) =>
-     setProcessingStatus(status)
+     setProcessingStatus(status),
     );
     setTranscriptionData(data);
    } catch (err) {
@@ -124,7 +124,7 @@ const App: React.FC = () => {
     setProcessingStatus(null);
    }
   },
-  [t]
+  [t],
  );
 
  const handleClear = () => {

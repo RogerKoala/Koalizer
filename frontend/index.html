@@ -1,28 +1,29 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="./src/assets/koalizer.ico" type="image/x-icon">
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="./src/assets/koalizer.ico" type="image/x-icon" />
 
-    <script>
-      (function () {
-        const savedTheme = localStorage.getItem("theme");
-        const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        
-        if (savedTheme === "dark" || (!savedTheme && systemPrefersDark)) {
-          document.documentElement.classList.add("dark");
-        } else {
-          document.documentElement.classList.remove("dark");
-        }
-      })();
-    </script>
-    
-    <title>Koalizer</title>
+  <script>
+   (function () {
+    const savedTheme = localStorage.getItem("theme");
+    const systemPrefersDark = window.matchMedia(
+     "(prefers-color-scheme: dark)",
+    ).matches;
 
-</head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    if (savedTheme === "dark" || (!savedTheme && systemPrefersDark)) {
+     document.documentElement.classList.add("dark");
+    } else {
+     document.documentElement.classList.remove("dark");
+    }
+   })();
+  </script>
+
+  <title>Koalizer</title>
+ </head>
+ <body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+ </body>
 </html>

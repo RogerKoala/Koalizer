@@ -73,7 +73,7 @@ const Settings: React.FC<SettingsProps> = ({
 
  const handleLinkClick = async (
   e: React.MouseEvent<HTMLAnchorElement>,
-  url: string
+  url: string,
  ) => {
   e.preventDefault();
   try {
@@ -338,7 +338,7 @@ const Settings: React.FC<SettingsProps> = ({
      </div>
      <div className="text-center">
       <p className="text-xs text-slate-600 dark:text-slate-400 mb-1 mt-4">
-       v0.1.1
+       v0.1.2
       </p>
      </div>
     </div>
