@@ -1,181 +1,120 @@
-# Koalizer v0.1.1
+<p align="center">
+<img src="https://raw.githubusercontent.com/RogerKoala/Koalizer/main/frontend/src-tauri/icons/icon.png" width="150" alt="Koalizer Logo">
 
 🇺🇸 English | 🇧🇷 Português
 
-<a name="english"></a>
+<b>Offline Speaker Diarization & Transcription Powerhouse</b>
 
-## 🇺🇸 English
+<i>Built with Tauri, WhisperX, and Pyannote.audio</i>
 
-Koalizer is a powerful desktop application built with Tauri and Python designed for offline audio transcription, alignment, and speaker diarization. It leverages the power of WhisperX for accurate speech-to-text and Pyannote for speaker identification.
+[![Download](https://img.shields.io/badge/Download-Koalizer-blue?style=for-the-badge&logo=github)](https://github.com/RogerKoala/Koalizer/releases)
 
-### ✨ Features
+</p>
 
-*   **Transcription:** High-accuracy transcription using OpenAI's Whisper (via WhisperX).
-*   **Forced Alignment:** Aligns transcription timestamps to the audio word-by-word.
-*   **Diarization:** Identifies and labels different speakers using Pyannote.audio.
-*   **YouTube Downloader:** Built-in support to download and process audio directly from YouTube links using `yt-dlp`.
-*   **Offline First:** Runs locally on your machine (requires downloading models once).
-*   **Sidecar Architecture:** Uses a robust Python backend bundled as a sidecar executable.
+---
 
-### 🛠️ Tech Stack
+## 📖 Overview
 
-*   **Frontend:** React, TypeScript, Tailwind CSS.
-*   **Core:** Tauri v2 (Rust).
-*   **Backend:** Python 3.10, Flask (API), PyTorch.
-*   **AI Models:** WhisperX, Pyannote.
-*   **Packaging:** PyInstaller (Backend), Tauri Bundler (App).
+**Koalizer** is a high-performance desktop application designed for researchers, journalists, and developers who need to process audio with maximum privacy. Unlike cloud-based solutions, Koalizer runs **entirely offline**, performing state-of-the-art transcription and speaker identification on your local hardware.
 
-### ⚙️ Prerequisites
+### 🚀 Key Capabilities
 
-Before running or building, ensure you have:
+- **Transcription (WhisperX):** Sub-segmental precision using OpenAI's Whisper models.
+- **Speaker Diarization (Pyannote):** Distinguish "Who spoke when" with high accuracy.
+- **Word-level Alignment:** Forced alignment for perfectly synced timestamps.
+- **YouTube Integration:** Seamlessly fetch and process content via `yt-dlp`.
+- **Hardware Acceleration:** Full support for NVIDIA GPUs (CUDA) to speed up inference.
 
-*   Node.js & npm installed.
-*   Rust installed (via `rustup`).
-*   Python 3.10 or higher.
-*   C++ Build Tools (Visual Studio) if on Windows (required for some Python libs).
+---
 
-### 📂 Project Structure
+## 🛠️ Tech Stack
 
-*   **frontend/:** Contains the React UI and Tauri configuration (`src-tauri`).
-*   **backend/:** Contains the Flask server, AI logic, and build scripts.
-*   **bin/:** Must contain `ffmpeg.exe` and `yt-dlp.exe` for the build process.
-*   **models/:** Must contain Pyannote `config.yaml` and model files.
+The project utilizes a **Sidecar Architecture**, separating the lightweight UI from the heavy-duty AI processing.
 
-### 🚀 Development Setup
+| Component         | Technology                                     |
+| ----------------- | ---------------------------------------------- |
+| **Frontend**      | React, TypeScript, Tailwind CSS                |
+| **App Shell**     | Tauri v2 (Rust)                                |
+| **AI Engine**     | Python 3.10, PyTorch, WhisperX, Pyannote.audio |
+| **Inter-Process** | Flask-based Local API                          |
 
-To run the application in development mode (Hot Reloading), you need two terminals.
+---
 
-#### 1. Backend Terminal
+## 📂 Architecture & Directory Structure
 
-Navigate to the `Backend` folder and run the Flask server:
+```text
+Koalizer/
+├── frontend/             # Tauri + React Application
+│   └── src-tauri/        # Rust backend & Sidecar config
+├── backend/              # Python Intelligence
+│   ├── app.py            # Flask Entry point
+│   ├── models/           # Pyannote/Whisper local weights
+│   └── bin/              # External binaries (FFmpeg, yt-dlp)
+└── build.py              # Unified build automation script
+
+```
+
+---
+
+## ⚡ Quick Start (Development)
+
+### Prerequisites
+
+- **C++ Build Tools:** Required for `pyannote.audio` and `whisperX` dependencies.
+- **NVIDIA Drivers:** (Recommended) For CUDA acceleration.
+
+### 1. Backend Setup
 
 ```bash
-cd Backend
+cd backend
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Win
 pip install -r requirements.txt
 python app.py
+
 ```
 
-The server will start at `http://127.0.0.1:5000`.
-
-#### 2. Frontend Terminal
-
-Navigate to the `Frontend` folder and start Tauri:
+### 2. Frontend Setup
 
 ```bash
-cd Frontend
+cd frontend
 npm install
 npm run tauri dev
+
 ```
 
-**Note:** In development mode (`npm run tauri dev`), the application does not automatically start the Python backend. You must run `python app.py` manually. The automatic sidecar execution is only enabled in the final build.
+---
 
-### 📦 Building for Production
+## 📦 Production Build
 
-We have an automated script that handles the complexity of compiling the Python environment, freezing dependencies, handling `_MEIPASS` paths, and bundling everything with Tauri.
-
-1.  Ensure you have the `backend/bin` folder with `ffmpeg.exe` and `yt-dlp.exe`.
-2.  Ensure you have the `backend/models` folder with Pyannote models.
-3.  Run the automated build script from the `Backend` folder:
+Koalizer features a **"One-Click Build"** system that bundles the entire Python environment into a standalone binary using PyInstaller before wrapping it into the Tauri installer.
 
 ```bash
-cd Backend
+cd backend
 python build.py
+
 ```
 
-What this script does:
+_This will generate a production-ready installer in `frontend/src-tauri/target/release/bundle/`._
 
-*   Uses PyInstaller to compile `app.py` into a standalone executable.
-*   Includes all complex dependencies (Torch, WhisperX, Pyannote, Certifi).
-*   Moves and renames the executable to `frontend/src-tauri/binaries/`.
-*   Automatically triggers `npm run tauri build` in the `Frontend` folder.
+---
 
-The final installer will be located in `frontend/src-tauri/target/release/bundle/`.
+## 📜 Acknowledgments & Citations
 
-<a name="português"></a>
+Koalizer is standing on the shoulders of giants. If you use this tool in academic research, please consider citing the underlying models:
 
-## 🇧🇷 Português
+- **Pyannote.audio:** Bredin et al. (2020) "pyannote.audio: neural building blocks for speaker diarization".
+- **WhisperX:** Bain et al. (2022) "WhisperX: Time-Accurate Speech Transcription of Long Audio".
 
-Koalizer é uma aplicação desktop desenvolvida com Tauri e Python, projetada para transcrição de áudio, alinhamento e diarização de locutores de forma offline. Utiliza o poder do WhisperX para transcrição precisa e Pyannote para identificação de quem está falando.
+---
 
-### ✨ Funcionalidades
+## 📄 License
 
-*   **Transcrição:** Alta precisão usando OpenAI Whisper (via WhisperX).
-*   **Alinhamento Forçado:** Alinha os timestamps da transcrição com o áudio palavra por palavra.
-*   **Diarização:** Identifica e separa diferentes locutores usando Pyannote.audio.
-*   **YouTube Downloader:** Suporte nativo para baixar e processar áudio diretamente de links do YouTube usando `yt-dlp`.
-*   **Offline First:** Roda localmente na sua máquina (necessário baixar os modelos uma vez).
-*   **Arquitetura Sidecar:** Utiliza um backend Python robusto empacotado como um executável auxiliar ("sidecar").
+This project is licensed under the MIT License. Note that the AI models (Pyannote/Whisper) are subject to their own respective licenses (MIT and Apache 2.0).
 
-### 🛠️ Tecnologias
+---
 
-*   **Frontend:** React, TypeScript, Tailwind CSS.
-*   **Core:** Tauri v2 (Rust).
-*   **Backend:** Python 3.10, Flask (API), PyTorch.
-*   **Modelos AI:** WhisperX, Pyannote.
-*   **Empacotamento:** PyInstaller (Backend), Tauri Bundler (App).
+## 🎓 Academic Context
 
-### ⚙️ Pré-requisitos
-
-Antes de rodar ou compilar, certifique-se de ter:
-
-*   Node.js & npm instalados.
-*   Rust instalado (via `rustup`).
-*   Python 3.10 ou superior.
-*   C++ Build Tools (Visual Studio) se estiver no Windows (necessário para algumas libs Python).
-
-### 📂 Estrutura do Projeto
-
-*   **frontend/:** Contém a UI em React e as configurações do Tauri (`src-tauri`).
-*   **backend/:** Contém o servidor Flask, lógica de IA e scripts de build.
-*   **bin/:** Deve conter `ffmpeg.exe` e `yt-dlp.exe` para o processo de build.
-*   **models/:** Deve conter o `config.yaml` do Pyannote e arquivos de modelo.
-
-### 🚀 Configuração de Desenvolvimento
-
-Para rodar a aplicação em modo de desenvolvimento (Hot Reloading), você precisa de dois terminais.
-
-#### 1. Terminal do Backend
-
-Navegue até a pasta `Backend` e inicie o servidor Flask:
-
-```bash
-cd Backend
-pip install -r requirements.txt
-python app.py
-```
-
-O servidor iniciará em `http://127.0.0.1:5000`.
-
-#### 2. Terminal do Frontend
-
-Navegue até a pasta `Frontend` e inicie o Tauri:
-
-```bash
-cd Frontend
-npm install
-npm run tauri dev
-```
-
-**Nota:** No modo de desenvolvimento (`npm run tauri dev`), a aplicação não inicia automaticamente o backend Python. Você deve rodar `python app.py` manualmente. A execução automática do sidecar só acontece na build final.
-
-### 📦 Compilando para Produção
-
-Possuímos um script automatizado que lida com a complexidade de compilar o ambiente Python, congelar dependências, lidar com caminhos `_MEIPASS` e empacotar tudo com o Tauri.
-
-1.  Certifique-se de que a pasta `backend/bin` contém `ffmpeg.exe` e `yt-dlp.exe`.
-2.  Certifique-se de que a pasta `backend/models` contém os modelos do Pyannote.
-3.  Execute o script de build automatizado a partir da pasta `Backend`:
-
-```bash
-cd Backend
-python build.py
-```
-
-O que este script faz:
-
-*   Usa PyInstaller para compilar `app.py` em um executável autônomo.
-*   Inclui todas as dependências complexas (Torch, WhisperX, Pyannote, Certifi).
-*   Move e renomeia o executável para `frontend/src-tauri/binaries/`.
-*   Dispara automaticamente o `npm run tauri build` na pasta do Frontend.
-
-O instalador final estará localizado em `frontend/src-tauri/target/release/bundle/`.
+This project was developed as part of my undergraduate thesis (TCC).
+The full thesis document is available in Portuguese only.
