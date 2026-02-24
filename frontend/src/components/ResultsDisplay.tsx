@@ -498,7 +498,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 
   try {
    const appState: SavedAppState = {
-    version: "0.1.2",
+    version: "0.1.3",
     fileName: fileName,
     savedAt: new Date().toISOString(),
     transcriptionData: editableData,
