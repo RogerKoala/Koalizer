@@ -1,4 +1,4 @@
-<p align="center">
+<div align="center">
 <img src="https://raw.githubusercontent.com/RogerKoala/Koalizer/main/frontend/src-tauri/icons/icon.png" width="150" alt="Koalizer Logo">
 
 🇺🇸 English | 🇧🇷 Português
@@ -9,7 +9,7 @@
 
 [![Download](https://img.shields.io/badge/Download-Koalizer-blue?style=for-the-badge&logo=github)](https://github.com/RogerKoala/Koalizer/releases)
 
-</p>
+</div>
 
 ---
 
