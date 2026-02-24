@@ -10,6 +10,11 @@ use tauri_plugin_shell::process::CommandEvent;
 #[cfg(not(debug_assertions))]
 use tauri_plugin_shell::ShellExt;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 fn main() {
     #[cfg(not(debug_assertions))]
     let backend_pid: Arc<Mutex<Option<u32>>> = Arc::new(Mutex::new(None));
@@ -68,15 +73,17 @@ fn main() {
         RunEvent::ExitRequested { .. } => {
             #[cfg(not(debug_assertions))]
             {
-                println!("App closing, executing TASKKILL on sidecar...");
+                println!("App closing, killing backend process tree...");
 
                 let lock = backend_pid.lock().unwrap();
                 if let Some(pid) = *lock {
+                    #[cfg(target_os = "windows")]
                     let _ = Command::new("taskkill")
                         .args(["/F", "/T", "/PID", &pid.to_string()])
+                        .creation_flags(CREATE_NO_WINDOW)
                         .output();
 
-                    println!("Taskkill command sent to PID {}", pid);
+                    println!("Backend process tree terminated (PID {}).", pid);
                 }
             }
         }
