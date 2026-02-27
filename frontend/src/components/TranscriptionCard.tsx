@@ -7,6 +7,8 @@ import {
  PencilIcon,
  CheckIcon,
  XMarkIcon,
+ PlayIcon,
+ StopIcon,
 } from "@heroicons/react/24/outline";
 
 interface TranscriptionCardProps {
@@ -22,6 +24,9 @@ interface TranscriptionCardProps {
  onUndo: (index: number) => void;
  onPermanentDelete?: (index: number) => void;
  t: Translations;
+ audioUrl?: string;
+ /** true when audioUrl points to a pre-cut WAV (from .koala zip) — start from 0, stop on ended */
+ isPreCut?: boolean;
 }
 
 const formatTime = (seconds: number): string => {
@@ -56,13 +61,96 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
  onUndo,
  onPermanentDelete,
  t,
+ audioUrl,
+ isPreCut = false,
 }) => {
  const textRef = useRef<HTMLTextAreaElement>(null);
+ const audioRef = useRef<HTMLAudioElement | null>(null);
+ const checkIntervalRef = useRef<number | null>(null);
  const [isEditingTime, setIsEditingTime] = useState(false);
  const [startTimeInput, setStartTimeInput] = useState(
   formatTime(segment.start)
  );
  const [endTimeInput, setEndTimeInput] = useState(formatTime(segment.end));
+ const [isPlaying, setIsPlaying] = useState(false);
+
+ const stopPlayback = () => {
+  if (checkIntervalRef.current !== null) {
+   clearInterval(checkIntervalRef.current);
+   checkIntervalRef.current = null;
+  }
+  if (audioRef.current) {
+   audioRef.current.pause();
+  }
+  setIsPlaying(false);
+ };
+
+ const handlePlayClick = () => {
+  if (!audioUrl) return;
+
+  if (isPlaying) {
+   stopPlayback();
+   return;
+  }
+
+  // Reuse or create audio element
+  if (!audioRef.current) {
+   audioRef.current = new Audio(audioUrl);
+  } else if (audioRef.current.src !== audioUrl) {
+   audioRef.current.src = audioUrl;
+  }
+
+  const audio = audioRef.current;
+
+  if (isPreCut) {
+   // Pre-cut audio from .koala zip: always start from the beginning,
+   // let it finish naturally via the onended event
+   audio.currentTime = 0;
+   audio.onended = () => setIsPlaying(false);
+   audio.play().then(() => {
+    setIsPlaying(true);
+   }).catch(() => {
+    setIsPlaying(false);
+   });
+  } else {
+   // Full-file audio: seek to segment start, stop at segment end via polling
+   audio.currentTime = segment.start;
+   audio.onended = () => stopPlayback();
+   audio.play().then(() => {
+    setIsPlaying(true);
+    checkIntervalRef.current = window.setInterval(() => {
+     if (audio.currentTime >= segment.end) {
+      stopPlayback();
+     }
+    }, 100);
+   }).catch(() => {
+    setIsPlaying(false);
+   });
+  }
+ };
+
+ // Clean up audio when card unmounts or audioUrl changes
+ useEffect(() => {
+  return () => {
+   stopPlayback();
+   if (audioRef.current) {
+    audioRef.current.src = "";
+    audioRef.current = null;
+   }
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, []);
+
+ // Stop playback if audioUrl changes
+ useEffect(() => {
+  if (isPlaying) {
+   stopPlayback();
+  }
+  if (audioRef.current) {
+   audioRef.current.src = audioUrl ?? "";
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [audioUrl]);
 
  const handleTextChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
   const newText = e.target.value;
@@ -70,6 +158,7 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
  };
 
  const handleDeleteClick = () => {
+  stopPlayback();
   if (segment.text.trim() === "" && onPermanentDelete) {
    onPermanentDelete(index);
   } else {
@@ -235,6 +324,27 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
        </button>
       </div>
      )}
+
+     {/* Play/Stop button — only shown when an audioUrl is available */}
+     {audioUrl && (
+      <button
+       onClick={handlePlayClick}
+       aria-label={isPlaying ? t.stopSegmentAudio : t.playSegmentAudio}
+       title={isPlaying ? t.stopSegmentAudio : t.playSegmentAudio}
+       className={`p-1 rounded-full transition-colors cursor-pointer ${
+        isPlaying
+         ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+         : "hover:bg-slate-200 dark:hover:bg-slate-300 text-slate-700"
+       }`}
+      >
+       {isPlaying ? (
+        <StopIcon className="size-4" />
+       ) : (
+        <PlayIcon className="size-4 stroke-black" />
+       )}
+      </button>
+     )}
+
      <button
       onClick={handleDeleteClick}
       aria-label={t.deleteSegmentLabel}
