@@ -10,13 +10,14 @@ export const translations = {
   uploadDrag: "or drag and drop",
   selectedFile: "Selected file",
   processAudio: "Process Audio",
-  importJsonDescription:
+  importProjectDescription:
    "Click to import a previously saved project to continue editing without needing to process the file again!",
   loadProject: "Load File",
   acceptedAudioFormats:
    "Accepted formats: MP3, WAV, M4A, FLAC, OGG, OPUS, AMR, MP4, MOV, MKV, AVI",
-  acceptedJsonFormats: "Accepted format: JSON only",
-  invalidJsonFileType: "Invalid file type. Only JSON files are accepted.",
+  acceptedProjectFormats: "Accepted format: .koala",
+  invalidProjectFileType: "Invalid file type. Only .koala files are accepted.",
+  audioSegmentsLoaded: "audio segments loaded",
   // Loader.tsx
   processing: "Processing audio...",
   takeAMoment: "This may take a moment.",
@@ -36,15 +37,15 @@ export const translations = {
   // ResultsDisplay.tsx
   analysisOf: "Analysis of ",
   exportPDF: "Export to PDF",
-  exportJSON: "Save Project",
-  importJSON: "Open a project",
+  exportProject: "Save Project",
+  importProject: "Open a project",
   saving: "Saving...",
   analyzeAnother: "Analyze Another File",
-  jsonSavedSuccess: "JSON saved successfully!",
-  jsonLoadedSuccess: "JSON loaded successfully!",
-  exportJsonError: "Error exporting JSON.",
-  importJsonError: "Error importing JSON.",
-  invalidJsonFormat: "Invalid JSON format.",
+  projectSavedSuccess: "Project saved successfully!",
+  projectLoadedSuccess: "Project loaded successfully!",
+  exportProjectError: "Error exporting project.",
+  importProjectError: "Error importing project.",
+  invalidProjectFormat: "Invalid project format.",
   transcriptionTime: "Transcription Time",
   aligningTime: "Alignment time",
   diarizationTime: "Diarization Time",
@@ -55,7 +56,6 @@ export const translations = {
   transcriptionSegments: "Transcription Segments",
   summary: "Summary",
   fileSavedSuccess: "File saved successfully!",
-  undoDeleteToast: "Segment deleted.",
   person: "Person",
   // PDF generation
   pdfTitle: "Transcription Report",
@@ -86,6 +86,8 @@ export const translations = {
   invalidTimeRange: "End time must be greater than start time",
   editTime: "Edit time",
   save: "Save",
+  playSegmentAudio: "Play segment audio",
+  stopSegmentAudio: "Stop audio",
   // ToastNotification.tsx
   close: "Close",
   undoButton: "Undo",
@@ -109,7 +111,6 @@ export const translations = {
   youtubeUrlLabel: "YouTube URL",
   youtubeUrlPlaceholder: "Ex: https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   invalidYoutubeUrl: "Please enter a valid YouTube URL.",
-  youtubeUrlValid: "Valid YouTube URL",
   processYoutube: "Process YouTube Video",
   // Errors
   invalidFileType:
@@ -128,14 +129,15 @@ export const translations = {
   uploadDrag: "ou arraste e solte",
   selectedFile: "Arquivo selecionado",
   processAudio: "Processar Áudio",
-  importJsonDescription:
+  importProjectDescription:
    "Clique para importar um projeto previamente salvo para continuar a edição sem precisar processar o arquivo novamente!",
   loadProject: "Carregar arquivo",
   acceptedAudioFormats:
    "Formatos aceitos: MP3, WAV, M4A, FLAC, OGG, OPUS, AMR, MP4, MOV, MKV, AVI",
-  acceptedJsonFormats: "Formato aceito: apenas JSON",
-  invalidJsonFileType:
-   "Tipo de arquivo inválido. Apenas arquivos JSON são aceitos.",
+  acceptedProjectFormats: "Formato aceito: .koala",
+  invalidProjectFileType:
+   "Tipo de arquivo inválido. Apenas arquivos .koala são aceitos.",
+  audioSegmentsLoaded: "segmentos de áudio carregados",
   // Loader.tsx
   processing: "Processando áudio...",
   takeAMoment: "Isso pode demorar um pouco.",
@@ -155,15 +157,16 @@ export const translations = {
   // ResultsDisplay.tsx
   analysisOf: "Análise de ",
   exportPDF: "Exportar para PDF",
-  exportJSON: "Salvar Projeto",
-  importJSON: "Carregar Projeto",
+
+  exportProject: "Salvar Projeto",
+  importProject: "Carregar Projeto",
   saving: "Salvando...",
   analyzeAnother: "Analisar Outro Arquivo",
-  jsonSavedSuccess: "JSON salvo com sucesso!",
-  jsonLoadedSuccess: "JSON carregado com sucesso!",
-  exportJsonError: "Erro ao exportar JSON.",
-  importJsonError: "Erro ao importar JSON.",
-  invalidJsonFormat: "Formato JSON inválido.",
+  projectSavedSuccess: "Projeto salvo com sucesso!",
+  projectLoadedSuccess: "Projeto carregado com sucesso!",
+  exportProjectError: "Erro ao exportar projeto.",
+  importProjectError: "Erro ao importar projeto.",
+  invalidProjectFormat: "Formato de projeto inválido.",
   transcriptionTime: "Tempo de Transcrição",
   aligningTime: "Tempo de alinhamento",
   diarizationTime: "Tempo de Diarização",
@@ -205,6 +208,8 @@ export const translations = {
   invalidTimeRange: "O tempo final deve ser maior que o tempo inicial",
   editTime: "Editar tempo",
   save: "Salvar",
+  playSegmentAudio: "Reproduzir áudio do segmento",
+  stopSegmentAudio: "Parar áudio",
   // ToastNotification.tsx
   close: "Fechar",
   undoButton: "Desfazer",
@@ -228,7 +233,6 @@ export const translations = {
   youtubeUrlLabel: "URL do YouTube",
   youtubeUrlPlaceholder: "Ex: https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   invalidYoutubeUrl: "Por favor, insira uma URL válida do YouTube.",
-  youtubeUrlValid: "URL do YouTube válida",
   processYoutube: "Processar Vídeo do YouTube",
   // Errors
   invalidFileType:
@@ -238,10 +242,8 @@ export const translations = {
    "Falha ao processar o arquivo de áudio. Por favor, tente novamente.",
  },
 };
-
 export type Language = keyof typeof translations;
 export type Translations = (typeof translations)["en"];
-
 export const getTranslator = (lang: Language): Translations => {
  return translations[lang];
 };
