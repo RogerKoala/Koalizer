@@ -11,6 +11,9 @@
     "dialog:default",
     "fs:allow-write-text-file",
     "fs:allow-read-text-file",
+    "fs:allow-open",
+    "fs:allow-write",
+    "fs:allow-create",
     "core:event:allow-listen",
     "shell:allow-open",
     "fs:default"
