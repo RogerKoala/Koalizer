@@ -552,8 +552,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         onUndo={handleSegmentUndo}
         onPermanentDelete={handleSegmentPermanentDelete}
         t={t}
-        audioUrl={segmentAudioUrls[index] ?? audioUrl}
-        isPreCut={segmentAudioUrls[index] !== undefined}
+        audioUrl={segment.manuallyAdded ? undefined : (segmentAudioUrls[index] ?? audioUrl)}
+        isPreCut={segmentAudioUrls[index] !== undefined && !segment.manuallyAdded}
        />
        {index < editableData.aligned_transcription.length - 1 && (
         <AddSegmentButton
