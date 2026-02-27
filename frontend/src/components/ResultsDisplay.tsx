@@ -19,22 +19,26 @@ import {
 } from "@heroicons/react/24/outline";
 import { countWords, formatSecondsToHMS } from "../utils/formatters";
 import { generateAndSavePDF } from "../services/pdfExportService";
-import { saveProjectToJSON } from "../services/jsonExportService";
-
+import { saveProjectToZip } from "../services/zipExportService";
 interface ResultsDisplayProps {
  data: TranscriptionResponse;
  onClear: () => void;
  fileName: string;
  t: Translations;
  importedState?: SavedAppState | null;
+ audioUrl?: string;
+ audioBuffer?: AudioBuffer;
+ segmentAudioUrls?: Record<number, string>;
 }
-
 const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
  data,
  onClear,
  fileName,
  t,
  importedState,
+ audioUrl,
+ audioBuffer,
+ segmentAudioUrls = {},
 }) => {
  const [editableData, setEditableData] = useState<TranscriptionResponse>(data);
  const [speakerNameMap, setSpeakerNameMap] = useState<{
@@ -48,8 +52,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
  );
  const [deletedSpeakers, setDeletedSpeakers] = useState<Set<string>>(new Set());
  const [isSavingPDF, setIsSavingPDF] = useState<boolean>(false);
- const [isSavingJSON, setIsSavingJSON] = useState<boolean>(false);
-
+ const [isSavingProject, setIsSavingProject] = useState<boolean>(false);
  const [toastConfig, setToastConfig] = useState<{
   show: boolean;
   message: string;
@@ -59,25 +62,20 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   message: "",
   type: "success",
  });
-
  useEffect(() => {
   if (importedState) {
    setSpeakerNameMap(importedState.speakerNameMap);
    setSpeakerColorMap(importedState.speakerColorMap);
    setEditableData(importedState.transcriptionData);
    setEditableDurations(importedState.editableDurations);
-
    if (importedState.deletedSpeakers) {
     setDeletedSpeakers(new Set(importedState.deletedSpeakers));
    }
-
    return;
   }
-
   const uniqueSpeakers = [
    ...new Set(data.aligned_transcription.map((s) => s.speaker)),
   ].sort();
-
   const initialNameMap = uniqueSpeakers.reduce(
    (acc, speaker: string) => {
     const match = speaker.match(/(\d+)$/);
@@ -91,7 +89,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    },
    {} as { [key: string]: string },
   );
-
   const initialColorMap = uniqueSpeakers.reduce(
    (acc, speaker: string) => {
     const hue = Math.floor(Math.random() * 360);
@@ -107,13 +104,11 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     [key: string]: { bg: string; bgUser: string; text: string; border: string };
    },
   );
-
   setSpeakerNameMap(initialNameMap);
   setSpeakerColorMap(initialColorMap);
   setEditableData(data);
   setEditableDurations(data.durations);
  }, [data, importedState]);
-
  const showToast = (message: string, type: "success" | "error" = "success") => {
   setToastConfig({
    show: true,
@@ -124,74 +119,61 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    setToastConfig((prev) => ({ ...prev, show: false }));
   }, 3000);
  };
-
  const handleSpeakerNameChange = (originalSpeaker: string, newName: string) => {
   setSpeakerNameMap((prevMap) => ({
    ...prevMap,
    [originalSpeaker]: newName,
   }));
  };
-
  const handleSpeakerDelete = (speakerToDelete: string) => {
   const hasSomeSegment = editableData.aligned_transcription.some(
    (segment) => segment.speaker === speakerToDelete,
   );
-
   if (!hasSomeSegment) {
    setSpeakerNameMap((prevMap) => {
     const newMap = { ...prevMap };
     delete newMap[speakerToDelete];
     return newMap;
    });
-
    setSpeakerColorMap((prevMap) => {
     const newMap = { ...prevMap };
     delete newMap[speakerToDelete];
     return newMap;
    });
-
    setDeletedSpeakers((prev) => {
     const newSet = new Set(prev);
     newSet.delete(speakerToDelete);
     return newSet;
    });
-
    return;
   }
-
   setDeletedSpeakers((prev) => new Set(prev).add(speakerToDelete));
-
   const newTranscription = editableData.aligned_transcription.map((segment) => {
    if (segment.speaker === speakerToDelete && !segment.isDeleted) {
     return { ...segment, isDeleted: true, deletedBySpeaker: true };
    }
    return segment;
   });
-
   const newTotalWords = newTranscription.reduce(
    (total, segment) =>
     total + (segment.isDeleted ? 0 : countWords(segment.text)),
    0,
   );
-
   setEditableData((prevData) => ({
    ...prevData,
    aligned_transcription: newTranscription,
   }));
-
   setEditableDurations((prevDurations) => ({
    ...prevDurations,
    total_words: newTotalWords,
   }));
  };
-
  const handleSpeakerRestore = (speakerToRestore: string) => {
   setDeletedSpeakers((prev) => {
    const newSet = new Set(prev);
    newSet.delete(speakerToRestore);
    return newSet;
   });
-
   const newTranscription = editableData.aligned_transcription.map((segment) => {
    if (segment.speaker === speakerToRestore && segment.deletedBySpeaker) {
     const { deletedBySpeaker, ...segmentWithoutFlag } = segment;
@@ -199,24 +181,20 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    }
    return segment;
   });
-
   const newTotalWords = newTranscription.reduce(
    (total, segment) =>
     total + (segment.isDeleted ? 0 : countWords(segment.text)),
    0,
   );
-
   setEditableData((prevData) => ({
    ...prevData,
    aligned_transcription: newTranscription,
   }));
-
   setEditableDurations((prevDurations) => ({
    ...prevDurations,
    total_words: newTotalWords,
   }));
  };
-
  const handleAddSpeaker = () => {
   const existingSpeakers = Object.keys(speakerNameMap);
   const speakerNumbers = existingSpeakers
@@ -225,12 +203,10 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     return match ? parseInt(match[1], 10) : -1;
    })
    .filter((num) => num >= 0);
-
   const maxSpeakerNum =
    speakerNumbers.length > 0 ? Math.max(...speakerNumbers) : -1;
   const newSpeakerNum = maxSpeakerNum + 1;
   const newSpeakerId = `SPEAKER_${String(newSpeakerNum).padStart(2, "0")}`;
-
   const hue = Math.floor(Math.random() * 360);
   const newColor = {
    bg: `hsl(${hue}, 70%, 95%)`,
@@ -238,18 +214,15 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    text: `hsl(${hue}, 80%, 25%)`,
    border: `hsl(${hue}, 60%, 80%)`,
   };
-
   setSpeakerNameMap((prevMap) => ({
    ...prevMap,
    [newSpeakerId]: `${t.person} ${String(newSpeakerNum + 1).padStart(2, "0")}`,
   }));
-
   setSpeakerColorMap((prevMap) => ({
    ...prevMap,
    [newSpeakerId]: newColor,
   }));
  };
-
  const handleAddSegment = (
   index: number,
   selectedSpeaker: string,
@@ -262,26 +235,23 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    text: "",
    speaker: selectedSpeaker,
    isDeleted: false,
+   manuallyAdded: true,
   };
-
   const newTranscription = [
    ...editableData.aligned_transcription.slice(0, index),
    newSegment,
    ...editableData.aligned_transcription.slice(index),
   ];
-
   setEditableData((prevData) => ({
    ...prevData,
    aligned_transcription: newTranscription,
   }));
  };
-
  const handleAddSegmentAtStart = (selectedSpeaker: string) => {
   const startTime = 0;
   const endTime = editableData.aligned_transcription[0]?.start || 0;
   handleAddSegment(0, selectedSpeaker, startTime, endTime);
  };
-
  const handleAddSegmentAtEnd = (selectedSpeaker: string) => {
   const index = editableData.aligned_transcription.length;
   const startTime = editableData.aligned_transcription[index - 1]?.end || 0;
@@ -290,22 +260,17 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    : editableDurations.total_seconds;
   handleAddSegment(index, selectedSpeaker, startTime, endTime);
  };
-
  const handleAddSegmentBetween = (index: number, selectedSpeaker: string) => {
   const segmentBefore = editableData.aligned_transcription[index];
   const segmentAfter = editableData.aligned_transcription[index + 1];
-
   if (!segmentBefore || !segmentAfter) {
    console.error("Intersection segments not found.");
    return;
   }
-
   const startTime = segmentBefore.end;
   const endTime = segmentAfter.start;
-
   handleAddSegment(index + 1, selectedSpeaker, startTime, endTime);
  };
-
  const handleSegmentChange = (
   index: number,
   updatedSegment: Partial<TranscriptionSegment>,
@@ -314,33 +279,27 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    const originalSpeakerId = editableData.aligned_transcription[index].speaker;
    handleSpeakerNameChange(originalSpeakerId, updatedSegment.speaker);
   }
-
   if (updatedSegment.text !== undefined) {
    const newTranscription = [...editableData.aligned_transcription];
-
    newTranscription[index] = {
     ...newTranscription[index],
     text: updatedSegment.text,
    };
-
    const newTotalWords = newTranscription.reduce(
     (total, segment) =>
      total + (segment.isDeleted ? 0 : countWords(segment.text)),
     0,
    );
-
    setEditableData((prevData) => ({
     ...prevData,
     aligned_transcription: newTranscription,
    }));
-
    setEditableDurations((prevDurations) => ({
     ...prevDurations,
     total_words: newTotalWords,
    }));
   }
  };
-
  const handleSegmentDelete = (indexToDelete: number) => {
   const newTranscription = editableData.aligned_transcription.map(
    (segment, index) => {
@@ -350,37 +309,30 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     return segment;
    },
   );
-
   const newTotalWords = newTranscription.reduce(
    (total, segment) =>
     total + (segment.isDeleted ? 0 : countWords(segment.text)),
    0,
   );
-
   setEditableData((prevData) => ({
    ...prevData,
    aligned_transcription: newTranscription,
   }));
-
   setEditableDurations((prevDurations) => ({
    ...prevDurations,
    total_words: newTotalWords,
   }));
  };
-
  const handleSegmentUndo = (indexToUndo: number) => {
   const segmentToRestore = editableData.aligned_transcription[indexToUndo];
   const speakerOfSegment = segmentToRestore.speaker;
-
   if (!speakerNameMap[speakerOfSegment]) {
    const match = speakerOfSegment.match(/(\d+)$/);
    let speakerName = speakerOfSegment;
-
    if (match) {
     const speakerNum = parseInt(match[1], 10);
     speakerName = `${t.person} ${String(speakerNum + 1).padStart(2, "0")}`;
    }
-
    const hue = Math.floor(Math.random() * 360);
    const newColor = {
     bg: `hsl(${hue}, 70%, 95%)`,
@@ -388,18 +340,15 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     text: `hsl(${hue}, 80%, 25%)`,
     border: `hsl(${hue}, 60%, 80%)`,
    };
-
    setSpeakerNameMap((prevMap) => ({
     ...prevMap,
     [speakerOfSegment]: speakerName,
    }));
-
    setSpeakerColorMap((prevMap) => ({
     ...prevMap,
     [speakerOfSegment]: newColor,
    }));
   }
-
   if (deletedSpeakers.has(speakerOfSegment)) {
    setDeletedSpeakers((prev) => {
     const newSet = new Set(prev);
@@ -407,7 +356,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     return newSet;
    });
   }
-
   const newTranscription = editableData.aligned_transcription.map(
    (segment, index) => {
     if (index === indexToUndo) {
@@ -417,58 +365,47 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     return segment;
    },
   );
-
   const newTotalWords = newTranscription.reduce(
    (total, segment) =>
     total + (segment.isDeleted ? 0 : countWords(segment.text)),
    0,
   );
-
   setEditableData((prevData) => ({
    ...prevData,
    aligned_transcription: newTranscription,
   }));
-
   setEditableDurations((prevDurations) => ({
    ...prevDurations,
    total_words: newTotalWords,
   }));
  };
-
  const handleSegmentPermanentDelete = (indexToDelete: number) => {
   const newTranscription = editableData.aligned_transcription.filter(
    (_, index) => index !== indexToDelete,
   );
-
   const newTotalWords = newTranscription.reduce(
    (total, segment) =>
     total + (segment.isDeleted ? 0 : countWords(segment.text)),
    0,
   );
-
   setEditableData((prevData) => ({
    ...prevData,
    aligned_transcription: newTranscription,
   }));
-
   setEditableDurations((prevDurations) => ({
    ...prevDurations,
    total_words: newTotalWords,
   }));
  };
-
  const handleExportPDF = async () => {
   if (isSavingPDF) return;
-
   const hasEmptySpeakerName = Object.values(speakerNameMap).some(
    (name) => name.trim() === "",
   );
-
   if (hasEmptySpeakerName) {
    showToast(t.exportPDFAlert, "error");
    return;
   }
-
   setIsSavingPDF(true);
   try {
    await generateAndSavePDF({
@@ -491,14 +428,12 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    setIsSavingPDF(false);
   }
  };
-
- const handleExportJSON = async () => {
-  if (isSavingJSON) return;
-  setIsSavingJSON(true);
-
+ const handleExportZip = async () => {
+  if (isSavingProject) return;
+  setIsSavingProject(true);
   try {
    const appState: SavedAppState = {
-    version: "0.1.3",
+    version: "0.2.0",
     fileName: fileName,
     savedAt: new Date().toISOString(),
     transcriptionData: editableData,
@@ -507,19 +442,17 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     editableDurations: editableDurations,
     deletedSpeakers: Array.from(deletedSpeakers),
    };
-
-   const result = await saveProjectToJSON(fileName, appState);
+   const result = await saveProjectToZip(fileName, appState, audioBuffer);
    if (result) {
-    showToast(t.jsonSavedSuccess, "success");
+    showToast(t.projectSavedSuccess, "success");
    }
   } catch (err: any) {
-   console.error("Failed to export JSON:", err);
-   showToast(t.exportJsonError, "error");
+   console.error("Failed to export project:", err);
+   showToast(t.exportProjectError, "error");
   } finally {
-   setIsSavingJSON(false);
+   setIsSavingProject(false);
   }
  };
-
  const isExportDisabled = useMemo(() => {
   if (Object.keys(speakerNameMap).length === 0) {
    return true;
@@ -528,7 +461,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
    ([speaker, name]) => !deletedSpeakers.has(speaker) && name.trim() === "",
   );
  }, [speakerNameMap, deletedSpeakers]);
-
  const availableSpeakers = useMemo(() => {
   return Object.keys(speakerNameMap)
    .filter((speakerId) => !deletedSpeakers.has(speakerId))
@@ -537,7 +469,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     name: speakerNameMap[speakerId],
    }));
  }, [speakerNameMap, deletedSpeakers]);
-
  return (
   <div className="space-y-8">
    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -547,17 +478,17 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     </h2>
     <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0">
      <button
-      onClick={handleExportJSON}
-      disabled={isSavingJSON}
+      onClick={handleExportZip}
+      disabled={isSavingProject}
       className="w-full sm:w-auto px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all disabled:bg-slate-400 dark:disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
      >
-      {isSavingJSON ? (
+      {isSavingProject ? (
        <>
         <div className="w-6 h-6 border-4 border-t-4 border-slate-200 border-t-emerald-600 rounded-full animate-spin"></div>
         {t.saving}
        </>
       ) : (
-       t.exportJSON
+       t.exportProject
       )}
      </button>
      <button
@@ -582,7 +513,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
      </button>
     </div>
    </div>
-
    <SpeakerManager
     speakerMap={speakerNameMap}
     deletedSpeakers={deletedSpeakers}
@@ -592,14 +522,12 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     onAddSpeaker={handleAddSpeaker}
     t={t}
    />
-
    {isExportDisabled && (
     <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 border-l-4 border-red-400 dark:border-red-600 rounded-r-lg flex items-center transition-opacity duration-300">
      <ExclamationTriangleIcon className="size-8 fill-[#c73434] mr-3" />
      <p className="text-sm font-medium">{t.exportWarning}</p>
     </div>
    )}
-
    <div>
     <h3 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4 border-b dark:border-slate-600 pb-2">
      {t.transcriptionSegments}
@@ -612,7 +540,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
        t={t}
       />
      )}
-
      {editableData.aligned_transcription.map((segment, index) => (
       <React.Fragment key={index}>
        <TranscriptionCard
@@ -625,8 +552,9 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         onUndo={handleSegmentUndo}
         onPermanentDelete={handleSegmentPermanentDelete}
         t={t}
+        audioUrl={segmentAudioUrls[index] ?? audioUrl}
+        isPreCut={segmentAudioUrls[index] !== undefined}
        />
-
        {index < editableData.aligned_transcription.length - 1 && (
         <AddSegmentButton
          onAddSegment={(selectedSpeaker) =>
@@ -638,7 +566,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
        )}
       </React.Fragment>
      ))}
-
      {editableData.aligned_transcription.length > 0 && (
       <AddSegmentButton
        onAddSegment={handleAddSegmentAtEnd}
@@ -648,14 +575,11 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
      )}
     </div>
    </div>
-
    <div>
     <h3 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4 border-b dark:border-slate-600 pb-2">
      {t.summary}
     </h3>
-
     <SummaryStats durations={editableDurations} t={t} />
-
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 mt-8">
      <div className="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg">
       <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center">
@@ -666,7 +590,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
        {formatSecondsToHMS(data.durations.transcription_seconds)}
       </p>
      </div>
-
      <div className="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg">
       <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center">
        <Bars4Icon className="size-6 mr-2" />
@@ -676,7 +599,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
        {formatSecondsToHMS(data.durations.alignment_seconds)}
       </p>
      </div>
-
      <div className="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg">
       <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center">
        <UserGroupIcon className="size-6 mr-2" />
@@ -688,7 +610,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
      </div>
     </div>
    </div>
-
    <ToastNotification
     message={toastConfig.message}
     show={toastConfig.show}
@@ -699,5 +620,4 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   </div>
  );
 };
-
 export default ResultsDisplay;

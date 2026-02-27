@@ -18,14 +18,13 @@ interface TranscriptionCardProps {
  color: { bg: string; bgUser: string; text: string; border: string };
  onSegmentChange: (
   index: number,
-  updatedSegment: Partial<TranscriptionSegment>
+  updatedSegment: Partial<TranscriptionSegment>,
  ) => void;
  onDelete: (index: number) => void;
  onUndo: (index: number) => void;
  onPermanentDelete?: (index: number) => void;
  t: Translations;
  audioUrl?: string;
- /** true when audioUrl points to a pre-cut WAV (from .koala zip) — start from 0, stop on ended */
  isPreCut?: boolean;
 }
 
@@ -69,7 +68,7 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
  const checkIntervalRef = useRef<number | null>(null);
  const [isEditingTime, setIsEditingTime] = useState(false);
  const [startTimeInput, setStartTimeInput] = useState(
-  formatTime(segment.start)
+  formatTime(segment.start),
  );
  const [endTimeInput, setEndTimeInput] = useState(formatTime(segment.end));
  const [isPlaying, setIsPlaying] = useState(false);
@@ -93,7 +92,6 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
    return;
   }
 
-  // Reuse or create audio element
   if (!audioRef.current) {
    audioRef.current = new Audio(audioUrl);
   } else if (audioRef.current.src !== audioUrl) {
@@ -103,33 +101,35 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
   const audio = audioRef.current;
 
   if (isPreCut) {
-   // Pre-cut audio from .koala zip: always start from the beginning,
-   // let it finish naturally via the onended event
    audio.currentTime = 0;
    audio.onended = () => setIsPlaying(false);
-   audio.play().then(() => {
-    setIsPlaying(true);
-   }).catch(() => {
-    setIsPlaying(false);
-   });
+   audio
+    .play()
+    .then(() => {
+     setIsPlaying(true);
+    })
+    .catch(() => {
+     setIsPlaying(false);
+    });
   } else {
-   // Full-file audio: seek to segment start, stop at segment end via polling
    audio.currentTime = segment.start;
    audio.onended = () => stopPlayback();
-   audio.play().then(() => {
-    setIsPlaying(true);
-    checkIntervalRef.current = window.setInterval(() => {
-     if (audio.currentTime >= segment.end) {
-      stopPlayback();
-     }
-    }, 100);
-   }).catch(() => {
-    setIsPlaying(false);
-   });
+   audio
+    .play()
+    .then(() => {
+     setIsPlaying(true);
+     checkIntervalRef.current = window.setInterval(() => {
+      if (audio.currentTime >= segment.end) {
+       stopPlayback();
+      }
+     }, 100);
+    })
+    .catch(() => {
+     setIsPlaying(false);
+    });
   }
  };
 
- // Clean up audio when card unmounts or audioUrl changes
  useEffect(() => {
   return () => {
    stopPlayback();
@@ -138,10 +138,8 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
     audioRef.current = null;
    }
   };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, []);
 
- // Stop playback if audioUrl changes
  useEffect(() => {
   if (isPlaying) {
    stopPlayback();
@@ -149,7 +147,6 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
   if (audioRef.current) {
    audioRef.current.src = audioUrl ?? "";
   }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [audioUrl]);
 
  const handleTextChange = (e: ChangeEvent<HTMLTextAreaElement>) => {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { TranscriptionResponse, SavedAppState } from "./types";
 import {
  processUploadWithStatus,
@@ -11,7 +11,6 @@ import Settings from "./components/Settings";
 import { getTranslator, Language } from "./i18n";
 import { useTheme } from "./hooks/useTheme";
 import ToastNotification from "./components/ToastNotification";
-
 const ACCEPTED_AUDIO_EXTENSIONS = [
  ".mp3",
  ".wav",
@@ -26,7 +25,6 @@ const ACCEPTED_EXTENSIONS = [
  ...ACCEPTED_AUDIO_EXTENSIONS,
  ...ACCEPTED_VIDEO_EXTENSIONS,
 ];
-
 const ACCEPTED_MIME_TYPES = [
  "audio/mpeg",
  "audio/mp3",
@@ -45,7 +43,6 @@ const ACCEPTED_MIME_TYPES = [
  "video/x-msvideo",
  "video/avi",
 ];
-
 const App: React.FC = () => {
  const [selectedFile, setSelectedFile] = useState<File | null>(null);
  const [youtubeUrl, setYoutubeUrl] = useState<string>("");
@@ -58,7 +55,11 @@ const App: React.FC = () => {
  const [importedState, setImportedState] = useState<SavedAppState | null>(null);
  const [showImportSuccessToast, setShowImportSuccessToast] =
   useState<boolean>(false);
-
+ const audioObjectUrlRef = useRef<string | null>(null);
+ const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
+ const [segmentAudioUrls, setSegmentAudioUrls] = useState<
+  Record<number, string>
+ >({});
  const [language, setLanguage] = useState<Language>(() => {
   if (typeof window !== "undefined") {
    const savedLang = localStorage.getItem("language");
@@ -66,25 +67,43 @@ const App: React.FC = () => {
   }
   return "en";
  });
-
  const { theme, setTheme } = useTheme();
  const t = useMemo(() => getTranslator(language), [language]);
-
  useEffect(() => {
   localStorage.setItem("language", language);
   document.documentElement.lang = language;
  }, [language]);
 
+ useEffect(() => {
+  if (audioObjectUrlRef.current) {
+   URL.revokeObjectURL(audioObjectUrlRef.current);
+   audioObjectUrlRef.current = null;
+  }
+  setAudioBuffer(null);
+  if (selectedFile) {
+   const objectUrl = URL.createObjectURL(selectedFile);
+   audioObjectUrlRef.current = objectUrl;
+   selectedFile.arrayBuffer().then((ab) => {
+    const ctx = new AudioContext();
+    return ctx.decodeAudioData(ab);
+   }).then((buf) => {
+    setAudioBuffer(buf);
+   }).catch(() => {
+    setAudioBuffer(null);
+   });
+  }
+ }, [selectedFile]);
+ const revokeSegmentUrls = (urls: Record<number, string>) => {
+  Object.values(urls).forEach((url) => URL.revokeObjectURL(url));
+ };
  const isValidFile = (file: File): boolean => {
   const fileName = file.name.toLowerCase();
   const hasValidExtension = ACCEPTED_EXTENSIONS.some((ext) =>
    fileName.endsWith(ext),
   );
   const hasValidMimeType = ACCEPTED_MIME_TYPES.includes(file.type);
-
   return hasValidExtension || hasValidMimeType;
  };
-
  const handleFileSelect = (file: File | null) => {
   if (file) {
    if (isValidFile(file)) {
@@ -98,19 +117,16 @@ const App: React.FC = () => {
    setSelectedFile(null);
   }
  };
-
  const handleProcess = useCallback(
   async (input: File | string) => {
    if (!input) {
     setError(t.selectFileFirst);
     return;
    }
-
    setIsLoading(true);
    setProcessingStatus(null);
    setError(null);
    setTranscriptionData(null);
-
    try {
     const data = await processUploadWithStatus(input, (status) =>
      setProcessingStatus(status),
@@ -126,7 +142,6 @@ const App: React.FC = () => {
   },
   [t],
  );
-
  const handleClear = () => {
   setSelectedFile(null);
   setYoutubeUrl("");
@@ -135,17 +150,25 @@ const App: React.FC = () => {
   setProcessingStatus(null);
   setError(null);
   setImportedState(null);
+  setAudioBuffer(null);
+  if (audioObjectUrlRef.current) {
+   URL.revokeObjectURL(audioObjectUrlRef.current);
+   audioObjectUrlRef.current = null;
+  }
+  revokeSegmentUrls(segmentAudioUrls);
+  setSegmentAudioUrls({});
  };
-
- const handleImportJSON = useCallback((state: SavedAppState) => {
-  setImportedState(state);
-  setTranscriptionData(state.transcriptionData);
-  setShowImportSuccessToast(true);
-  setTimeout(() => {
-   setShowImportSuccessToast(false);
-  }, 3000);
- }, []);
-
+ const handleImportZIP = useCallback(
+  (state: SavedAppState, newSegmentUrls: Record<number, string>) => {
+   revokeSegmentUrls(segmentAudioUrls);
+   setSegmentAudioUrls(newSegmentUrls);
+   setImportedState(state);
+   setTranscriptionData(state.transcriptionData);
+   setShowImportSuccessToast(true);
+   setTimeout(() => setShowImportSuccessToast(false), 3000);
+  },
+  []
+ );
  return (
   <div
    className={`min-h-screen text-slate-800 dark:text-slate-200 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 relative transition-colors duration-300 ${
@@ -161,7 +184,6 @@ const App: React.FC = () => {
      t={t}
     />
    </div>
-
    <div className="w-full max-w-4xl mx-auto">
     <header className="text-center mb-8">
      <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-white tracking-tight font-display">
@@ -171,7 +193,6 @@ const App: React.FC = () => {
       {t.appSubtitle}
      </p>
     </header>
-
     <main
      className={`rounded-2xl shadow-2xl shadow-slate-200 dark:shadow-black/20 p-6 sm:p-8 transition-colors duration-300 ${
       theme === "light" ? "light-theme-card" : "dark-theme-card"
@@ -186,7 +207,6 @@ const App: React.FC = () => {
        <p>{error}</p>
       </div>
      )}
-
      {isLoading ? (
       <Loader t={t} status={processingStatus?.status} />
      ) : transcriptionData ? (
@@ -200,6 +220,9 @@ const App: React.FC = () => {
        }
        t={t}
        importedState={importedState}
+       audioUrl={audioObjectUrlRef.current ?? undefined}
+       audioBuffer={audioBuffer ?? undefined}
+       segmentAudioUrls={segmentAudioUrls}
       />
      ) : (
       <FileUpload
@@ -210,13 +233,13 @@ const App: React.FC = () => {
        t={t}
        youtubeUrl={youtubeUrl}
        onYoutubeUrlChange={setYoutubeUrl}
-       onImportJSON={handleImportJSON}
+       onImportZIP={handleImportZIP}
       />
      )}
     </main>
    </div>
    <ToastNotification
-    message={t.jsonLoadedSuccess}
+    message={t.projectLoadedSuccess}
     show={showImportSuccessToast}
     onClose={() => setShowImportSuccessToast(false)}
     t={t}
@@ -224,5 +247,4 @@ const App: React.FC = () => {
   </div>
  );
 };
-
 export default App;
