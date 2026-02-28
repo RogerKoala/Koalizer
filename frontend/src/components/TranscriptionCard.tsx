@@ -120,10 +120,10 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
    audioRef.current = new Audio(audioUrl);
   } else if (audioRef.current.src !== audioUrl) {
    audioRef.current.src = audioUrl;
-   wasUserPausedRef.current = false;
   }
 
   const audio = audioRef.current;
+  setIsPlayerExpanded(true);
 
   if (isPlaying) {
    stopProgressTracking();
@@ -175,21 +175,6 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
   }
  };
 
- const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const value = parseFloat(e.target.value);
-  if (!audioRef.current) return;
-  const target = isPreCut ? value : segment.start + value;
-  audioRef.current.currentTime = target;
-  setCurrentTime(value);
- };
-
- const handleSkip = (seconds: number) => {
-  if (!audioRef.current) return;
-  const newRel = Math.max(0, Math.min(segDuration, getRelativeTime() + seconds));
-  audioRef.current.currentTime = isPreCut ? newRel : segment.start + newRel;
-  setCurrentTime(newRel);
- };
-
  useEffect(() => {
   return () => {
    stopPlayback();
@@ -207,11 +192,25 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
   }
   setIsPlayerExpanded(false);
   setCurrentTime(0);
-  wasUserPausedRef.current = false;
   if (audioRef.current) {
    audioRef.current.src = audioUrl ?? "";
   }
  }, [audioUrl]);
+
+ const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const value = parseFloat(e.target.value);
+  if (!audioRef.current) return;
+  const target = isPreCut ? value : segment.start + value;
+  audioRef.current.currentTime = target;
+  setCurrentTime(value);
+ };
+
+ const handleSkip = (seconds: number) => {
+  if (!audioRef.current) return;
+  const newRel = Math.max(0, Math.min(segDuration, getRelativeTime() + seconds));
+  audioRef.current.currentTime = isPreCut ? newRel : segment.start + newRel;
+  setCurrentTime(newRel);
+ };
 
  const handleTextChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
   const newText = e.target.value;
@@ -406,14 +405,12 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
        </button>
        <button
         onClick={() => setIsPlayerExpanded((v) => !v)}
-        title={isPlayerExpanded ? "Ocultar controles" : "Mostrar controles"}
-        className={`p-1 rounded-full transition-colors cursor-pointer ${
-         isPlayerExpanded
-          ? "bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-100"
-          : "hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-400 dark:text-slate-500"
+        className={`p-1 rounded-full transition-colors cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-300 text-slate-700 ${
+         isPlayerExpanded ? "bg-slate-200 dark:bg-slate-300" : ""
         }`}
+        title={isPlayerExpanded ? "Ocultar controles" : "Mostrar controles"}
        >
-        <svg xmlns="http://www.w3.org/2000/svg" className="size-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className="size-4 stroke-black" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
         </svg>
        </button>
@@ -430,19 +427,21 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
     </div>
    </div>
 
+
+   {/* Player expandido - aparece apos o primeiro clique em play */}
    {audioUrl && isPlayerExpanded && (
     <div className="mb-3 rounded-lg bg-black/5 dark:bg-white/5 border border-slate-200 dark:border-slate-600 overflow-hidden">
      <div className="flex items-center gap-2 px-2 py-1.5">
       <button
        onClick={() => handleSkip(-5)}
        title="-5s"
-       className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-100 transition-colors cursor-pointer flex-shrink-0"
+       className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-300 text-slate-700 transition-colors cursor-pointer flex-shrink-0"
       >
-       <svg xmlns="http://www.w3.org/2000/svg" className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+       <svg xmlns="http://www.w3.org/2000/svg" className="size-4 stroke-black" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M21 16.811c0 .864-.933 1.406-1.683.977l-7.108-4.061a1.125 1.125 0 0 1 0-1.954l7.108-4.061A1.125 1.125 0 0 1 21 8.689v8.122ZM11.25 16.811c0 .864-.933 1.406-1.683.977l-7.108-4.061a1.125 1.125 0 0 1 0-1.954l7.108-4.061a1.125 1.125 0 0 1 1.683.977v8.122Z" />
        </svg>
       </button>
-      <span className="text-xs font-mono text-slate-500 dark:text-slate-400 w-10 text-right flex-shrink-0">
+      <span className="text-xs font-mono text-slate-700 w-10 text-right flex-shrink-0">
        {Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, "0")}
       </span>
       <input
@@ -454,18 +453,18 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
        onChange={handleSeek}
        className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-emerald-500"
        style={{
-        background: `linear-gradient(to right, #10b981 ${segDuration > 0 ? (currentTime / segDuration) * 100 : 0}%, #cbd5e1 ${segDuration > 0 ? (currentTime / segDuration) * 100 : 0}%)`
+        background: `linear-gradient(to right, #10b981 ${segDuration > 0 ? (currentTime / segDuration) * 100 : 0}%, #cbd5e1 ${segDuration > 0 ? (currentTime / segDuration) * 100 : 0}%)`,
        }}
       />
-      <span className="text-xs font-mono text-slate-500 dark:text-slate-400 w-10 flex-shrink-0">
+      <span className="text-xs font-mono text-slate-700 w-10 flex-shrink-0">
        {Math.floor(segDuration / 60)}:{String(Math.floor(segDuration % 60)).padStart(2, "0")}
       </span>
       <button
        onClick={() => handleSkip(5)}
        title="+5s"
-       className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-100 transition-colors cursor-pointer flex-shrink-0"
+       className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-300 text-slate-700 transition-colors cursor-pointer flex-shrink-0"
       >
-       <svg xmlns="http://www.w3.org/2000/svg" className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+       <svg xmlns="http://www.w3.org/2000/svg" className="size-4 stroke-black" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
        </svg>
       </button>
