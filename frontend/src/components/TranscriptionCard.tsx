@@ -72,12 +72,41 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
  );
  const [endTimeInput, setEndTimeInput] = useState(formatTime(segment.end));
  const [isPlaying, setIsPlaying] = useState(false);
+ const [isPlayerExpanded, setIsPlayerExpanded] = useState(false);
+ const [currentTime, setCurrentTime] = useState(0);
+ const [duration, setDuration] = useState(0);
+ const progressIntervalRef = useRef<number | null>(null);
+ const wasUserPausedRef = useRef(false);
+
+ const segDuration = isPreCut ? duration : segment.end - segment.start;
+
+ const getRelativeTime = () => {
+  if (!audioRef.current) return 0;
+  return isPreCut
+   ? audioRef.current.currentTime
+   : Math.max(0, audioRef.current.currentTime - segment.start);
+ };
+
+ const startProgressTracking = () => {
+  if (progressIntervalRef.current !== null) return;
+  progressIntervalRef.current = window.setInterval(() => {
+   setCurrentTime(getRelativeTime());
+  }, 100);
+ };
+
+ const stopProgressTracking = () => {
+  if (progressIntervalRef.current !== null) {
+   clearInterval(progressIntervalRef.current);
+   progressIntervalRef.current = null;
+  }
+ };
 
  const stopPlayback = () => {
   if (checkIntervalRef.current !== null) {
    clearInterval(checkIntervalRef.current);
    checkIntervalRef.current = null;
   }
+  stopProgressTracking();
   if (audioRef.current) {
    audioRef.current.pause();
   }
@@ -87,52 +116,84 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
  const handlePlayClick = () => {
   if (!audioUrl) return;
 
-  if (isPlaying) {
-   stopPlayback();
-   return;
-  }
-
   if (!audioRef.current) {
    audioRef.current = new Audio(audioUrl);
   } else if (audioRef.current.src !== audioUrl) {
    audioRef.current.src = audioUrl;
+   wasUserPausedRef.current = false;
   }
 
   const audio = audioRef.current;
 
+  if (isPlaying) {
+   stopProgressTracking();
+   audio.pause();
+   setIsPlaying(false);
+   wasUserPausedRef.current = true;
+   return;
+  }
+
   if (isPreCut) {
-   audio.currentTime = 0;
-   audio.onended = () => setIsPlaying(false);
+   if (!wasUserPausedRef.current) audio.currentTime = 0;
+   wasUserPausedRef.current = false;
+   audio.onended = () => {
+    setIsPlaying(false);
+    stopProgressTracking();
+    setCurrentTime(0);
+    wasUserPausedRef.current = false;
+   };
    audio
     .play()
     .then(() => {
      setIsPlaying(true);
+     setDuration(audio.duration || 0);
+     startProgressTracking();
     })
-    .catch(() => {
-     setIsPlaying(false);
-    });
+    .catch(() => setIsPlaying(false));
   } else {
-   audio.currentTime = segment.start;
-   audio.onended = () => stopPlayback();
+   if (!wasUserPausedRef.current) audio.currentTime = segment.start;
+   wasUserPausedRef.current = false;
+   audio.onended = () => {
+    stopPlayback();
+    setCurrentTime(0);
+    wasUserPausedRef.current = false;
+   };
    audio
     .play()
     .then(() => {
      setIsPlaying(true);
+     startProgressTracking();
      checkIntervalRef.current = window.setInterval(() => {
       if (audio.currentTime >= segment.end) {
        stopPlayback();
+       setCurrentTime(0);
+       wasUserPausedRef.current = false;
       }
      }, 100);
     })
-    .catch(() => {
-     setIsPlaying(false);
-    });
+    .catch(() => setIsPlaying(false));
   }
+ };
+
+ const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const value = parseFloat(e.target.value);
+  if (!audioRef.current) return;
+  const target = isPreCut ? value : segment.start + value;
+  audioRef.current.currentTime = target;
+  setCurrentTime(value);
+ };
+
+ const handleSkip = (seconds: number) => {
+  if (!audioRef.current) return;
+  const newRel = Math.max(0, Math.min(segDuration, getRelativeTime() + seconds));
+  audioRef.current.currentTime = isPreCut ? newRel : segment.start + newRel;
+  setCurrentTime(newRel);
  };
 
  useEffect(() => {
   return () => {
    stopPlayback();
+   stopProgressTracking();
    if (audioRef.current) {
     audioRef.current.src = "";
     audioRef.current = null;
@@ -144,6 +205,9 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
   if (isPlaying) {
    stopPlayback();
   }
+  setIsPlayerExpanded(false);
+  setCurrentTime(0);
+  wasUserPausedRef.current = false;
   if (audioRef.current) {
    audioRef.current.src = audioUrl ?? "";
   }
@@ -322,24 +386,38 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
       </div>
      )}
 
-     {/* Play/Stop button — only shown when an audioUrl is available */}
      {audioUrl && (
-      <button
-       onClick={handlePlayClick}
-       aria-label={isPlaying ? t.stopSegmentAudio : t.playSegmentAudio}
-       title={isPlaying ? t.stopSegmentAudio : t.playSegmentAudio}
-       className={`p-1 rounded-full transition-colors cursor-pointer ${
-        isPlaying
-         ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-         : "hover:bg-slate-200 dark:hover:bg-slate-300 text-slate-700"
-       }`}
-      >
-       {isPlaying ? (
-        <StopIcon className="size-4" />
-       ) : (
-        <PlayIcon className="size-4 stroke-black" />
-       )}
-      </button>
+      <>
+       <button
+        onClick={handlePlayClick}
+        aria-label={isPlaying ? t.stopSegmentAudio : t.playSegmentAudio}
+        title={isPlaying ? t.stopSegmentAudio : t.playSegmentAudio}
+        className={`p-1 rounded-full transition-colors cursor-pointer ${
+         isPlaying
+          ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+          : "hover:bg-slate-200 dark:hover:bg-slate-300 text-slate-700"
+        }`}
+       >
+        {isPlaying ? (
+         <StopIcon className="size-4" />
+        ) : (
+         <PlayIcon className="size-4 stroke-black" />
+        )}
+       </button>
+       <button
+        onClick={() => setIsPlayerExpanded((v) => !v)}
+        title={isPlayerExpanded ? "Ocultar controles" : "Mostrar controles"}
+        className={`p-1 rounded-full transition-colors cursor-pointer ${
+         isPlayerExpanded
+          ? "bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-100"
+          : "hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-400 dark:text-slate-500"
+        }`}
+       >
+        <svg xmlns="http://www.w3.org/2000/svg" className="size-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+        </svg>
+       </button>
+      </>
      )}
 
      <button
@@ -351,6 +429,49 @@ const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
      </button>
     </div>
    </div>
+
+   {audioUrl && isPlayerExpanded && (
+    <div className="mb-3 rounded-lg bg-black/5 dark:bg-white/5 border border-slate-200 dark:border-slate-600 overflow-hidden">
+     <div className="flex items-center gap-2 px-2 py-1.5">
+      <button
+       onClick={() => handleSkip(-5)}
+       title="-5s"
+       className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-100 transition-colors cursor-pointer flex-shrink-0"
+      >
+       <svg xmlns="http://www.w3.org/2000/svg" className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 16.811c0 .864-.933 1.406-1.683.977l-7.108-4.061a1.125 1.125 0 0 1 0-1.954l7.108-4.061A1.125 1.125 0 0 1 21 8.689v8.122ZM11.25 16.811c0 .864-.933 1.406-1.683.977l-7.108-4.061a1.125 1.125 0 0 1 0-1.954l7.108-4.061a1.125 1.125 0 0 1 1.683.977v8.122Z" />
+       </svg>
+      </button>
+      <span className="text-xs font-mono text-slate-500 dark:text-slate-400 w-10 text-right flex-shrink-0">
+       {Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, "0")}
+      </span>
+      <input
+       type="range"
+       min={0}
+       max={segDuration || 1}
+       step={0.1}
+       value={currentTime}
+       onChange={handleSeek}
+       className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-emerald-500"
+       style={{
+        background: `linear-gradient(to right, #10b981 ${segDuration > 0 ? (currentTime / segDuration) * 100 : 0}%, #cbd5e1 ${segDuration > 0 ? (currentTime / segDuration) * 100 : 0}%)`
+       }}
+      />
+      <span className="text-xs font-mono text-slate-500 dark:text-slate-400 w-10 flex-shrink-0">
+       {Math.floor(segDuration / 60)}:{String(Math.floor(segDuration % 60)).padStart(2, "0")}
+      </span>
+      <button
+       onClick={() => handleSkip(5)}
+       title="+5s"
+       className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-100 transition-colors cursor-pointer flex-shrink-0"
+      >
+       <svg xmlns="http://www.w3.org/2000/svg" className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
+       </svg>
+      </button>
+     </div>
+    </div>
+   )}
 
    <textarea
     ref={textRef}
