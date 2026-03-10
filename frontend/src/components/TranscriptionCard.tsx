@@ -1,6 +1,7 @@
 import React, { ChangeEvent, useRef, useEffect, useState } from "react";
 import { TranscriptionSegment } from "../types";
 import { Translations } from "../i18n";
+import { formatTime, parseTimeToSeconds } from "../utils/formatters";
 import {
  ClockIcon,
  TrashIcon,
@@ -27,28 +28,6 @@ interface TranscriptionCardProps {
  audioUrl?: string;
  isPreCut?: boolean;
 }
-
-const formatTime = (seconds: number): string => {
- const totalSeconds = Math.floor(seconds);
- const hours = Math.floor(totalSeconds / 3600);
- const minutes = Math.floor((totalSeconds % 3600) / 60);
- const remainingSeconds = totalSeconds % 60;
-
- const paddedHours = hours.toString().padStart(2, "0");
- const paddedMinutes = minutes.toString().padStart(2, "0");
- const paddedSeconds = remainingSeconds.toString().padStart(2, "0");
-
- return `${paddedHours}:${paddedMinutes}:${paddedSeconds}`;
-};
-
-const parseTimeToSeconds = (timeString: string): number => {
- const parts = timeString.split(":").map((p) => parseInt(p, 10));
- if (parts.length === 3) {
-  const [hours, minutes, seconds] = parts;
-  return hours * 3600 + minutes * 60 + seconds;
- }
- return 0;
-};
 
 const TranscriptionCard: React.FC<TranscriptionCardProps> = ({
  segment,

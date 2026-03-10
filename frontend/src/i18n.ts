@@ -56,6 +56,7 @@ export const translations = {
   transcriptionSegments: "Transcription Segments",
   summary: "Summary",
   fileSavedSuccess: "File saved successfully!",
+  undoDeleteToast: "Segment deleted.",
   person: "Person",
   // PDF generation
   pdfTitle: "Transcription Report",
