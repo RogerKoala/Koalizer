@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Language } from "../i18n";
+import { APP_VERSION } from "../constants";
 import { open } from "@tauri-apps/plugin-shell";
 
 import githubLogo from "../assets/github.png";
@@ -338,7 +339,7 @@ const Settings: React.FC<SettingsProps> = ({
      </div>
      <div className="text-center">
       <p className="text-xs text-slate-600 dark:text-slate-400 mb-1 mt-4">
-       v0.1.3
+       v{APP_VERSION}
       </p>
      </div>
     </div>

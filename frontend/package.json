@@ -5,9 +5,10 @@
  "type": "module",
  "scripts": {
   "dev": "vite",
-  "build": "tsc && vite build",
+  "build": "node scripts/sync-version.js && tsc && vite build",
   "preview": "vite preview",
-  "tauri": "tauri"
+  "tauri": "tauri",
+  "sync-version": "node scripts/sync-version.js"
  },
  "dependencies": {
   "@heroicons/react": "^2.2.0",

@@ -2,6 +2,7 @@ import JSZip from "jszip";
 import { save } from "@tauri-apps/plugin-dialog";
 import { open } from "@tauri-apps/plugin-fs";
 import { SavedAppState } from "../types";
+import { PROJECT_FORMAT_VERSION } from "../constants";
 
 function writeString(view: DataView, offset: number, str: string) {
   for (let i = 0; i < str.length; i++) {
@@ -83,7 +84,7 @@ export const saveProjectToZip = async (
 
   const annotatedState: SavedAppState = {
     ...appState,
-    version: "0.2.0",
+    version: PROJECT_FORMAT_VERSION,
     transcriptionData: {
       ...appState.transcriptionData,
       aligned_transcription: annotatedSegments,

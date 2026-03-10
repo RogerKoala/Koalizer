@@ -11,6 +11,7 @@ import AddSegmentButton from "./AddSegmentButton";
 import SpeakerManager from "./SpeakerManager";
 import ToastNotification from "./ToastNotification";
 import { Translations } from "../i18n";
+import { PROJECT_FORMAT_VERSION } from "../constants";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/solid";
 import {
  MicrophoneIcon,
@@ -433,7 +434,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   setIsSavingProject(true);
   try {
    const appState: SavedAppState = {
-    version: "0.2.0",
+    version: PROJECT_FORMAT_VERSION,
     fileName: fileName,
     savedAt: new Date().toISOString(),
     transcriptionData: editableData,
