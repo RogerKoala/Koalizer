@@ -5,6 +5,8 @@ export interface TranscriptionSegment {
  speaker: string;
  isDeleted?: boolean;
  deletedBySpeaker?: boolean;
+ audioSegmentFile?: string;
+ manuallyAdded?: boolean;
 }
 
 export interface Durations {

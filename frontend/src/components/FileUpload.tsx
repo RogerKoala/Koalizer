@@ -5,6 +5,7 @@ import {
  DocumentArrowDownIcon,
 } from "@heroicons/react/24/solid";
 import { SavedAppState } from "../types";
+import JSZip from "jszip";
 
 interface FileUploadProps {
  selectedFile: File | null;
@@ -14,7 +15,7 @@ interface FileUploadProps {
  t: Translations;
  youtubeUrl: string;
  onYoutubeUrlChange: (url: string) => void;
- onImportJSON?: (state: SavedAppState) => void;
+ onImportZIP?: (state: SavedAppState, segmentUrls: Record<number, string>) => void;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({
@@ -25,7 +26,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
  t,
  youtubeUrl,
  onYoutubeUrlChange,
- onImportJSON,
+ onImportZIP,
 }) => {
  const fileInputRef = useRef<HTMLInputElement>(null);
  const jsonFileInputRef = useRef<HTMLInputElement>(null);
@@ -33,8 +34,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
   "file"
  );
  const [isDragging, setIsDragging] = useState(false);
- const [selectedJsonFile, setSelectedJsonFile] = useState<File | null>(null);
- const [jsonData, setJsonData] = useState<SavedAppState | null>(null);
+ const [selectedKoalaFile, setSelectedKoalaFile] = useState<File | null>(null);
+ const [koalaData, setKoalaData] = useState<{
+  state: SavedAppState;
+  segmentUrls: Record<number, string>;
+ } | null>(null);
  const [fileError, setFileError] = useState<string>("");
  const [jsonError, setJsonError] = useState<string>("");
 
@@ -86,12 +90,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
   setJsonError("");
   if (mode === "file") {
    onYoutubeUrlChange("");
-   setSelectedJsonFile(null);
-   setJsonData(null);
+   setSelectedKoalaFile(null);
+   setKoalaData(null);
   } else if (mode === "youtube") {
    onFileSelect(null);
-   setSelectedJsonFile(null);
-   setJsonData(null);
+   setSelectedKoalaFile(null);
+   setKoalaData(null);
   } else {
    onFileSelect(null);
    onYoutubeUrlChange("");
@@ -110,7 +114,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
    : inputMode === "youtube"
    ? !!youtubeUrl && isYoutubeUrlValid(youtubeUrl)
    : inputMode === "json"
-   ? !!selectedJsonFile && !!jsonData
+   ? !!selectedKoalaFile && !!koalaData
    : false;
 
  const handleProcessClick = () => {
@@ -119,8 +123,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
    onProcess(selectedFile);
   } else if (inputMode === "youtube") {
    onProcess(youtubeUrl.trim());
-  } else if (inputMode === "json" && jsonData && onImportJSON) {
-   onImportJSON(jsonData);
+  } else if (inputMode === "json" && koalaData && onImportZIP) {
+   onImportZIP(koalaData.state, koalaData.segmentUrls);
   }
  };
 
@@ -130,21 +134,32 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const file = event.target.files?.[0] || null;
 
   if (!file) {
-   setSelectedJsonFile(null);
-   setJsonData(null);
+   setSelectedKoalaFile(null);
+   setKoalaData(null);
    return;
   }
 
-  if (!file.name.endsWith(".json")) {
-   setJsonError(t.invalidJsonFileType);
-   setSelectedJsonFile(null);
-   setJsonData(null);
+  if (!file.name.endsWith(".koala")) {
+   setJsonError(t.invalidProjectFileType);
+   setSelectedKoalaFile(null);
+   setKoalaData(null);
    return;
   }
 
   try {
-   const jsonContent = await file.text();
-   const parsedState = JSON.parse(jsonContent) as SavedAppState;
+   const arrayBuffer = await file.arrayBuffer();
+   const zip = await JSZip.loadAsync(arrayBuffer);
+
+   const jsonFile = zip.file("project.json");
+   if (!jsonFile) {
+    setJsonError(t.invalidProjectFormat);
+    setSelectedKoalaFile(null);
+    setKoalaData(null);
+    return;
+   }
+
+   const jsonText = await jsonFile.async("text");
+   const parsedState = JSON.parse(jsonText) as SavedAppState;
 
    if (
     !parsedState.version ||
@@ -152,20 +167,34 @@ const FileUpload: React.FC<FileUploadProps> = ({
     !parsedState.speakerNameMap ||
     !parsedState.speakerColorMap
    ) {
-    setJsonError(t.invalidJsonFormat);
-    setSelectedJsonFile(null);
-    setJsonData(null);
+    setJsonError(t.invalidProjectFormat);
+    setSelectedKoalaFile(null);
+    setKoalaData(null);
     return;
    }
 
-   setSelectedJsonFile(file);
-   setJsonData(parsedState);
+   // Extract audio segment URLs
+   const segmentUrls: Record<number, string> = {};
+   const segments = parsedState.transcriptionData.aligned_transcription;
+   for (let idx = 0; idx < segments.length; idx++) {
+    const seg = segments[idx];
+    if (seg.audioSegmentFile) {
+     const segFile = zip.file(seg.audioSegmentFile);
+     if (segFile) {
+      const blob = await segFile.async("blob");
+      segmentUrls[idx] = URL.createObjectURL(new Blob([blob], { type: "audio/wav" }));
+     }
+    }
+   }
+
+   setSelectedKoalaFile(file);
+   setKoalaData({ state: parsedState, segmentUrls });
    setJsonError("");
   } catch (err: any) {
-   console.error("Failed to import JSON:", err);
-   setJsonError(t.importJsonError);
-   setSelectedJsonFile(null);
-   setJsonData(null);
+   console.error("Failed to import .koala:", err);
+   setJsonError(t.importProjectError);
+   setSelectedKoalaFile(null);
+   setKoalaData(null);
   }
  };
 
@@ -233,35 +262,44 @@ const FileUpload: React.FC<FileUploadProps> = ({
   event.stopPropagation();
   setIsDragging(false);
 
-  if (disabled || !onImportJSON) return;
+  if (disabled || !onImportZIP) return;
 
   const files = event.dataTransfer.files;
   if (files && files.length > 0) {
    const file = files[0];
-   if (file.name.endsWith(".json")) {
+   if (file.name.endsWith(".koala")) {
     try {
-     const jsonContent = await file.text();
-     const parsedState = JSON.parse(jsonContent) as SavedAppState;
-
-     if (
-      !parsedState.version ||
-      !parsedState.transcriptionData ||
-      !parsedState.speakerNameMap ||
-      !parsedState.speakerColorMap
-     ) {
-      setJsonError(t.invalidJsonFormat);
+     const arrayBuffer = await file.arrayBuffer();
+     const zip = await JSZip.loadAsync(arrayBuffer);
+     const jsonFile = zip.file("project.json");
+     if (!jsonFile) { setJsonError(t.invalidProjectFormat); return; }
+     const jsonText = await jsonFile.async("text");
+     const parsedState = JSON.parse(jsonText) as SavedAppState;
+     if (!parsedState.version || !parsedState.transcriptionData || !parsedState.speakerNameMap || !parsedState.speakerColorMap) {
+      setJsonError(t.invalidProjectFormat);
       return;
      }
-
-     setSelectedJsonFile(file);
-     setJsonData(parsedState);
+     const segmentUrls: Record<number, string> = {};
+     const segments = parsedState.transcriptionData.aligned_transcription;
+     for (let idx = 0; idx < segments.length; idx++) {
+      const seg = segments[idx];
+      if (seg.audioSegmentFile) {
+       const segFile = zip.file(seg.audioSegmentFile);
+       if (segFile) {
+        const blob = await segFile.async("blob");
+        segmentUrls[idx] = URL.createObjectURL(new Blob([blob], { type: "audio/wav" }));
+       }
+      }
+     }
+     setSelectedKoalaFile(file);
+     setKoalaData({ state: parsedState, segmentUrls });
      setJsonError("");
     } catch (err: any) {
-     console.error("Failed to import JSON:", err);
-     setJsonError(t.importJsonError);
+     console.error("Failed to import .koala:", err);
+     setJsonError(t.importProjectError);
     }
    } else {
-    setJsonError(t.invalidJsonFileType);
+    setJsonError(t.invalidProjectFileType);
    }
   }
  };
@@ -292,7 +330,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
      >
       {t.youtubeLink}
      </button>
-     {onImportJSON && (
+     {onImportZIP && (
       <button
        type="button"
        onClick={() => handleModeChange("json")}
@@ -302,7 +340,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
        }`}
       >
-       {t.importJSON}
+       {t.importProject}
       </button>
      )}
     </div>
@@ -402,19 +440,19 @@ const FileUpload: React.FC<FileUploadProps> = ({
        type="file"
        ref={jsonFileInputRef}
        onChange={handleJsonFileChange}
-       accept=".json"
+       accept=".koala"
        className="hidden"
        disabled={disabled}
       />
       <DocumentArrowDownIcon className="size-30 mb-5" />
       <p className="text-slate-600 dark:text-slate-500 font-medium">
-       {t.importJsonDescription}
+       {t.importProjectDescription}
       </p>
       <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
        {t.uploadDrag}
       </p>
       <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
-       {t.acceptedJsonFormats}
+       {t.acceptedProjectFormats}
       </p>
      </div>
 
@@ -424,12 +462,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
       </div>
      )}
 
-     {selectedJsonFile && !jsonError && (
+     {selectedKoalaFile && !jsonError && (
       <div className="w-full text-center bg-slate-100 dark:bg-slate-700 p-3 rounded-lg">
        <p className="truncate text-slate-700 dark:text-slate-200 font-medium">
         {t.selectedFile}:{" "}
         <span className="text-sky-600 dark:text-sky-400">
-         {selectedJsonFile.name}
+         {selectedKoalaFile.name}
         </span>
        </p>
       </div>
