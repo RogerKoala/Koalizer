@@ -244,6 +244,21 @@ def get_json():
   return send_from_directory(str(OUTPUT_DIR.resolve()), json_filename, as_attachment=True)
 
 
+@app.route("/get_audio", methods=["GET"])
+def get_audio():
+  with lock:
+    if status["state"] != "ready":
+      return jsonify({"error": "audio not available yet"}), 404
+      
+    audio_files = list(UPLOAD_DIR.glob("*.*"))
+    if not audio_files:
+        return jsonify({"error": "audio file not found"}), 404
+        
+    audio_path = audio_files[0]
+
+  return send_from_directory(str(UPLOAD_DIR.resolve()), audio_path.name, as_attachment=True)
+
+
 if __name__ == "__main__":
   startup_check()
   app.run(debug=True, host="0.0.0.0", port=5000)

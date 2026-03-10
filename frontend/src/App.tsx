@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from "react"
 import { TranscriptionResponse, SavedAppState } from "./types";
 import {
  processUploadWithStatus,
+ fetchAudioFromServer,
  ProcessingStatus,
 } from "./services/transcriptionService";
 import FileUpload from "./components/FileUpload";
@@ -131,6 +132,23 @@ const App: React.FC = () => {
     const data = await processUploadWithStatus(input, (status) =>
      setProcessingStatus(status),
     );
+
+    if (typeof input === "string") {
+     try {
+      setProcessingStatus({ status: "downloading", message: "Fetching generated audio..." });
+      const audioBlob = await fetchAudioFromServer();
+      const objectUrl = URL.createObjectURL(audioBlob);
+      audioObjectUrlRef.current = objectUrl;
+
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const audioCtx = new AudioContext();
+      const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+      setAudioBuffer(decodedBuffer);
+     } catch (audioErr) {
+      console.error("Failed to fetch and decode audio from server", audioErr);
+     }
+    }
+
     setTranscriptionData(data);
    } catch (err) {
     console.error(err);
@@ -216,7 +234,7 @@ const App: React.FC = () => {
        fileName={
         importedState?.fileName ||
         selectedFile?.name ||
-        (youtubeUrl ? youtubeUrl : "audio.wav")
+        (youtubeUrl ? "youtube_video" : "audio.wav")
        }
        t={t}
        importedState={importedState}

@@ -128,3 +128,11 @@ export const processUploadWithStatus = async (
   throw new Error("Could not connect to server to retrieve final result.");
  }
 };
+
+export const fetchAudioFromServer = async (): Promise<Blob> => {
+ const response = await fetch(`${BASE_URL}/get_audio`);
+ if (!response.ok) {
+  throw new Error("Failed to fetch audio from server.");
+ }
+ return await response.blob();
+};
