@@ -13,11 +13,11 @@
 
 ---
 
-## 📖 Overview
+## Overview
 
 **Koalizer** is a high-performance desktop application designed for researchers, journalists, and developers who need to process audio with maximum privacy. Unlike cloud-based solutions, Koalizer runs **entirely offline**, performing state-of-the-art transcription and speaker identification on your local hardware.
 
-### 🚀 Key Capabilities
+### Key Capabilities
 
 - **Transcription (WhisperX):** Sub-segmental precision using OpenAI's Whisper models.
 - **Speaker Diarization (Pyannote):** Distinguish "Who spoke when" with high accuracy.
@@ -27,7 +27,7 @@
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 The project utilizes a **Sidecar Architecture**, separating the lightweight UI from the heavy-duty AI processing.
 
@@ -40,7 +40,7 @@ The project utilizes a **Sidecar Architecture**, separating the lightweight UI f
 
 ---
 
-## 📂 Architecture & Directory Structure
+## Architecture & Directory Structure
 
 ```text
 Koalizer/
@@ -56,7 +56,7 @@ Koalizer/
 
 ---
 
-## ⚡ Quick Start (Development)
+## Quick Start (Development)
 
 ### Prerequisites
 
@@ -85,7 +85,7 @@ npm run tauri dev
 
 ---
 
-## 📦 Production Build
+## Production Build
 
 Koalizer features a **"One-Click Build"** system that bundles the entire Python environment into a standalone binary using PyInstaller before wrapping it into the Tauri installer.
 
@@ -99,7 +99,7 @@ _This will generate a production-ready installer in `frontend/src-tauri/target/r
 
 ---
 
-## 📜 Acknowledgments & Citations
+## Acknowledgments & Citations
 
 Koalizer is standing on the shoulders of giants. If you use this tool in academic research, please consider citing the underlying models:
 
@@ -108,13 +108,16 @@ Koalizer is standing on the shoulders of giants. If you use this tool in academi
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License. Note that the AI models (Pyannote/Whisper) are subject to their own respective licenses (MIT and Apache 2.0).
 
 ---
 
-## 🎓 Academic Context
+## Academic Context
 
-This project was developed as part of my undergraduate thesis (TCC).
-The full thesis document is available in Portuguese only.
+This project was developed as part of my undergraduate thesis (TCC). The full thesis document is available in Portuguese only.
+
+The version presented in this work corresponds to **Koalizer v0.1.1**.
+
+[Full Thesis (PDF)](https://github.com/RogerKoala/Koalizer/blob/main/Final_Thesis_Project.pdf)
